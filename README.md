@@ -1,7 +1,7 @@
 # go-jsonrpc
 ## Installing
 ```
-go get -u github.com/iloveswift/go-jsonrpc
+go get -u github.com/sunquakes/go-jsonrpc
 ```
 ## Test
 ```
@@ -13,7 +13,7 @@ go test -v ./test/...
 ```go
 package main
 
-import go_jsonrpc "github.com/iloveswift/go-jsonrpc"
+import go_jsonrpc "github.com/sunquakes/go-jsonrpc"
 
 type IntRpc struct{}
 
@@ -51,7 +51,7 @@ package main
 
 import (
 	"fmt"
-	go_jsonrpc "github.com/iloveswift/go-jsonrpc"
+	go_jsonrpc "github.com/sunquakes/go-jsonrpc"
 )
 
 type Params struct {
