@@ -3,7 +3,7 @@ package client
 import (
 	"bytes"
 	"fmt"
-	"github.com/iloveswift/go-jsonrpc/common"
+	"github.com/sunquakes/go-jsonrpc/common"
 	"io/ioutil"
 	"net/http"
 	"strconv"

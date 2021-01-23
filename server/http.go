@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"github.com/iloveswift/go-jsonrpc/common"
+	"github.com/sunquakes/go-jsonrpc/common"
 	"io/ioutil"
 	"log"
 	"net/http"

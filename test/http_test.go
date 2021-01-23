@@ -1,8 +1,8 @@
 package test
 
 import (
-	go_jsonrpc "github.com/iloveswift/go-jsonrpc"
-	"github.com/iloveswift/go-jsonrpc/common"
+	go_jsonrpc "github.com/sunquakes/go-jsonrpc"
+	"github.com/sunquakes/go-jsonrpc/common"
 	"testing"
 	"time"
 )

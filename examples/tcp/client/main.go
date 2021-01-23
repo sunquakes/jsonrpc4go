@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	go_jsonrpc "github.com/iloveswift/go-jsonrpc"
+	go_jsonrpc "github.com/sunquakes/go-jsonrpc"
 )
 
 type Params struct {

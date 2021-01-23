@@ -2,7 +2,7 @@ package go_jsonrpc
 
 import (
 	"errors"
-	"github.com/iloveswift/go-jsonrpc/server"
+	"github.com/sunquakes/go-jsonrpc/server"
 )
 
 type ServerInterface interface {

@@ -2,7 +2,7 @@ package go_jsonrpc
 
 import (
 	"errors"
-	"github.com/iloveswift/go-jsonrpc/client"
+	"github.com/sunquakes/go-jsonrpc/client"
 )
 
 type ClientInterface interface {

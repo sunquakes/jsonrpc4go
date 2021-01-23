@@ -2,7 +2,7 @@ package client
 
 import (
 	"fmt"
-	"github.com/iloveswift/go-jsonrpc/common"
+	"github.com/sunquakes/go-jsonrpc/common"
 	"net"
 	"strconv"
 	"time"

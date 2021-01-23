@@ -1,6 +1,6 @@
 package main
 
-import go_jsonrpc "github.com/iloveswift/go-jsonrpc"
+import go_jsonrpc "github.com/sunquakes/go-jsonrpc"
 
 type IntRpc struct{}
 
