@@ -3,7 +3,7 @@ package client
 import (
 	"bytes"
 	"fmt"
-	"github.com/sunquakes/go-jsonrpc/common"
+	"github.com/sunquakes/jsonrpc4go/common"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -14,6 +14,17 @@ type Http struct {
 	Ip          string
 	Port        string
 	RequestList []*common.SingleRequest
+}
+
+func NewHttpClient(ip string, port string) *Http {
+	return &Http{
+		ip,
+		port,
+		nil,
+	}
+}
+
+func (p *Http) SetOptions(httpOptions interface{}) {
 }
 
 func (p *Http) BatchAppend(method string, params interface{}, result interface{}, isNotify bool) *error {

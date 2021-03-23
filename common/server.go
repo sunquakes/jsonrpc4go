@@ -92,6 +92,7 @@ func RegisterMethod(rm reflect.Method) *Method {
 
 func (svr *Server) Handler(b []byte) []byte {
 	data, err := ParseRequestBody(b)
+
 	if err != nil {
 		return jsonE(nil, JsonRpc, ParseError)
 	}

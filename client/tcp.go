@@ -2,7 +2,7 @@ package client
 
 import (
 	"fmt"
-	"github.com/sunquakes/go-jsonrpc/common"
+	"github.com/sunquakes/jsonrpc4go/common"
 	"net"
 	"strconv"
 	"time"
@@ -12,6 +12,32 @@ type Tcp struct {
 	Ip          string
 	Port        string
 	RequestList []*common.SingleRequest
+	Options     TcpOptions
+	Conn        net.Conn
+}
+
+type TcpOptions struct {
+	PackageEof       string
+	PackageMaxLength int32
+}
+
+func NewTcpClient(ip string, port string) (*Tcp, error) {
+	options := TcpOptions{
+		"\r\n",
+		1024 * 1024 * 2,
+	}
+	var addr = fmt.Sprintf("%s:%s", ip, port)
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return &Tcp{
+		ip,
+		port,
+		nil,
+		options,
+		conn,
+	}, err
 }
 
 func (p *Tcp) BatchAppend(method string, params interface{}, result interface{}, isNotify bool) *error {
@@ -43,9 +69,14 @@ func (p *Tcp) BatchCall() error {
 		br = append(br, req)
 	}
 	bReq := common.JsonBatchRs(br)
+	bReq = append(bReq, []byte(p.Options.PackageEof)...)
 	err = p.handleFunc(bReq, p.RequestList)
 	p.RequestList = make([]*common.SingleRequest, 0)
 	return err
+}
+
+func (p *Tcp) SetOptions(tcpOptions interface{}) {
+	p.Options = tcpOptions.(TcpOptions)
 }
 
 func (p *Tcp) Call(method string, params interface{}, result interface{}, isNotify bool) error {
@@ -58,26 +89,24 @@ func (p *Tcp) Call(method string, params interface{}, result interface{}, isNoti
 	} else {
 		req = common.JsonRs(strconv.FormatInt(time.Now().Unix(), 10), method, params)
 	}
+	req = append(req, []byte(p.Options.PackageEof)...)
 	err = p.handleFunc(req, result)
 	return err
 }
 
 func (p *Tcp) handleFunc(b []byte, result interface{}) error {
-	var addr = fmt.Sprintf("%s:%s", p.Ip, p.Port)
-	conn, err := net.Dial("tcp", addr)
+	var err error
+	_, err = p.Conn.Write(b)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	_, err = conn.Write(b)
+	var buf = make([]byte, p.Options.PackageMaxLength)
+	n, err := p.Conn.Read(buf)
 	if err != nil {
 		return err
 	}
-	var buf = make([]byte, 512)
-	n, err := conn.Read(buf)
-	if err != nil {
-		return err
-	}
-	err = common.GetResult(buf[:n], result)
+	l := len([]byte(p.Options.PackageEof))
+	buf = buf[:n-l]
+	err = common.GetResult(buf, result)
 	return err
 }

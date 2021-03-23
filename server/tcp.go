@@ -2,37 +2,46 @@ package server
 
 import (
 	"fmt"
-	"github.com/sunquakes/go-jsonrpc/common"
+	"github.com/sunquakes/jsonrpc4go/common"
 	"log"
 	"net"
 )
 
-const (
-	BufferSize = 1024
-)
-
 type Tcp struct {
-	Ip         string
-	Port       string
-	Server     common.Server
-	BufferSize int
+	Ip      string
+	Port    string
+	Server  common.Server
+	Options TcpOptions
+}
+
+type TcpOptions struct {
+	PackageEof       string
+	PackageMaxLength int32
 }
 
 func NewTcpServer(ip string, port string) *Tcp {
+	options := TcpOptions{
+		"\r\n",
+		1024 * 1024 * 2,
+	}
 	return &Tcp{
 		ip,
 		port,
 		common.Server{},
-		BufferSize,
+		options,
 	}
 }
 
 func (p *Tcp) Start() {
 	var addr = fmt.Sprintf("%s:%s", p.Ip, p.Port)
-	listener, _ := net.Listen("tcp", addr)
+	tcpAddr, err := net.ResolveTCPAddr("tcp", addr) //解析tcp服务
+	if err != nil {
+		common.Debug(err.Error())
+	}
+	listener, _ := net.ListenTCP("tcp", tcpAddr)
 	log.Printf("Listening tcp://%s:%s", p.Ip, p.Port)
 	for {
-		conn, err := listener.Accept()
+		conn, err := listener.AcceptTCP()
 		if err != nil {
 			common.Debug(err.Error())
 			continue
@@ -45,20 +54,25 @@ func (p *Tcp) Register(s interface{}) {
 	p.Server.Register(s)
 }
 
-func (p *Tcp) SetBuffer(bs int) {
-	p.BufferSize = bs
+func (p *Tcp) SetOptions(tcpOptions interface{}) {
+	p.Options = tcpOptions.(TcpOptions)
 }
 
 func (p *Tcp) handleFunc(conn net.Conn) {
-	var (
-		err error
-	)
-
-	var buf = make([]byte, p.BufferSize)
-	n, err := conn.Read(buf)
-	if err != nil {
-		common.Debug(err.Error())
+	defer conn.Close()
+	for {
+		var buf = make([]byte, p.Options.PackageMaxLength)
+		n, err := conn.Read(buf)
+		if err != nil {
+			if n == 0 {
+				continue
+			}
+			common.Debug(err.Error())
+			break
+		}
+		l := len([]byte(p.Options.PackageEof))
+		res := p.Server.Handler(buf[:n-l])
+		res = append(res, []byte(p.Options.PackageEof)...)
+		conn.Write(res)
 	}
-	res := p.Server.Handler(buf[:n])
-	conn.Write(res)
 }

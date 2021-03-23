@@ -1,14 +1,14 @@
-package go_jsonrpc
+package jsonrpc4go
 
 import (
 	"errors"
-	"github.com/sunquakes/go-jsonrpc/server"
+	"github.com/sunquakes/jsonrpc4go/server"
 )
 
 type ServerInterface interface {
+	SetOptions(interface{})
 	Start()
 	Register(s interface{})
-	SetBuffer(bs int)
 }
 
 func NewServer(protocol string, ip string, port string) (ServerInterface, error) {

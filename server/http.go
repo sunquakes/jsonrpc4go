@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"github.com/sunquakes/go-jsonrpc/common"
+	"github.com/sunquakes/jsonrpc4go/common"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,7 +12,6 @@ type Http struct {
 	Ip         string
 	Port       string
 	Server     common.Server
-	BufferSize int
 }
 
 func NewHttpServer(ip string, port string) *Http {
@@ -20,7 +19,6 @@ func NewHttpServer(ip string, port string) *Http {
 		ip,
 		port,
 		common.Server{},
-		BufferSize,
 	}
 }
 
@@ -36,8 +34,7 @@ func (p *Http) Register(s interface{}) {
 	p.Server.Register(s)
 }
 
-func (p *Http) SetBuffer(bs int) {
-	p.BufferSize = bs
+func (p *Http) SetOptions(tcpOptions interface{}) {
 }
 
 func (p *Http) handleFunc(w http.ResponseWriter, r *http.Request) {

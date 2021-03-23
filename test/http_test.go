@@ -1,8 +1,8 @@
 package test
 
 import (
-	go_jsonrpc "github.com/sunquakes/go-jsonrpc"
-	"github.com/sunquakes/go-jsonrpc/common"
+	"github.com/sunquakes/jsonrpc4go"
+	"github.com/sunquakes/jsonrpc4go/common"
 	"testing"
 	"time"
 )
@@ -24,12 +24,12 @@ func (i *IntRpc) Add(params *Params, result *Result) error {
 
 func TestHttpCall(t *testing.T) {
 	go func() {
-		s, _ := go_jsonrpc.NewServer("http", "127.0.0.1", "3232")
+		s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", "3232")
 		s.Register(new(IntRpc))
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	c, _ := go_jsonrpc.NewClient("http", "127.0.0.1", "3232")
+	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3232")
 	params := Params{1, 2}
 	result := new(Result)
 	c.Call("IntRpc.Add", &params, result, false)
@@ -40,12 +40,12 @@ func TestHttpCall(t *testing.T) {
 
 func TestHttpCallMethod(t *testing.T) {
 	go func() {
-		s, _ := go_jsonrpc.NewServer("http", "127.0.0.1", "3238")
+		s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", "3238")
 		s.Register(new(IntRpc))
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	c, _ := go_jsonrpc.NewClient("http", "127.0.0.1", "3238")
+	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3238")
 	params := Params{1, 2}
 	result := new(Result)
 	c.Call("int_rpc/Add", &params, result, false)
@@ -56,12 +56,12 @@ func TestHttpCallMethod(t *testing.T) {
 
 func TestHttpNotifyCall(t *testing.T) {
 	go func() {
-		s, _ := go_jsonrpc.NewServer("http", "127.0.0.1", "3233")
+		s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", "3233")
 		s.Register(new(IntRpc))
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	c, _ := go_jsonrpc.NewClient("http", "127.0.0.1", "3233")
+	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3233")
 	params := Params{2, 3}
 	result := new(Result)
 	c.Call("IntRpc.Add", &params, result, true)
@@ -72,12 +72,12 @@ func TestHttpNotifyCall(t *testing.T) {
 
 func TestHttpBatchCall(t *testing.T) {
 	go func() {
-		s, _ := go_jsonrpc.NewServer("http", "127.0.0.1", "3236")
+		s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", "3236")
 		s.Register(new(IntRpc))
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	c, _ := go_jsonrpc.NewClient("http", "127.0.0.1", "3236")
+	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3236")
 
 	result1 := new(Result)
 	err1 := c.BatchAppend("IntRpc/Add1", Params{1, 6}, result1, false)
