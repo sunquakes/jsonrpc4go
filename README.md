@@ -13,7 +13,10 @@ go test -v ./test/...
 ```go
 package main
 
-import "github.com/sunquakes/jsonrpc4go"
+import (
+    "github.com/sunquakes/jsonrpc4go"
+    // "github.com/sunquakes/jsonrpc4go/server"// Custom package EOF when the protocol is tcp
+)
 
 type IntRpc struct{}
 
@@ -40,7 +43,9 @@ func (i *IntRpc) Add2(params *Params, result *Result2) error {
 }
 
 func main() {
-	s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", "3232")
+	s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", "3232") // the protocol is http
+	// s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3232") // the protocol is tcp
+	// s.SetOptions(server.TcpOptions{"aaaaaa", 2 * 1024 * 1024}) // Custom package EOF when the protocol is tcp
 	s.Register(new(IntRpc))
 	s.Start()
 }
@@ -52,6 +57,7 @@ package main
 import (
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go"
+	// "github.com/sunquakes/jsonrpc4go/client" // Custom package EOF when the protocol is tcp
 )
 
 type Params struct {
@@ -67,7 +73,9 @@ type Result2 struct {
 
 func main() {
 	result1 := new(Result)
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3232")
+	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3232") // the protocol is http
+	// c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3232") // the protocol is tcp
+	// c.SetOptions(client.TcpOptions{"aaaaaa", 2 * 1024 * 1024}) // Custom package EOF when the protocol is tcp
 	err1 := c.Call("IntRpc/Add", Params{1, 6}, result1, false) // or "int_rpc/Add", "int_rpc.Add", "IntRpc.Add"
 	// data sent: {"id":"1604283212","jsonrpc":"2.0","method":"IntRpc/Add","params":{"a":1,"b":6}}
 	// data received: {"id":"1604283212","jsonrpc":"2.0","result":7}

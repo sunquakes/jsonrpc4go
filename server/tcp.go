@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
 	"log"
@@ -40,13 +41,15 @@ func (p *Tcp) Start() {
 	}
 	listener, _ := net.ListenTCP("tcp", tcpAddr)
 	log.Printf("Listening tcp://%s:%s", p.Ip, p.Port)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	for {
 		conn, err := listener.AcceptTCP()
 		if err != nil {
 			common.Debug(err.Error())
 			continue
 		}
-		go p.handleFunc(conn)
+		go p.handleFunc(ctx, conn)
 	}
 }
 
@@ -58,8 +61,14 @@ func (p *Tcp) SetOptions(tcpOptions interface{}) {
 	p.Options = tcpOptions.(TcpOptions)
 }
 
-func (p *Tcp) handleFunc(conn net.Conn) {
+func (p *Tcp) handleFunc(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
+	select {
+	case <-ctx.Done():
+		return
+	default:
+		//	do nothing
+	}
 	for {
 		var buf = make([]byte, p.Options.PackageMaxLength)
 		n, err := conn.Read(buf)
