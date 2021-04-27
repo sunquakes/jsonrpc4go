@@ -46,11 +46,13 @@ func main() {
 	s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", "3232") // the protocol is http
 	// s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3232") // the protocol is tcp
 	// s.SetOptions(server.TcpOptions{"aaaaaa", 2 * 1024 * 1024}) // Custom package EOF when the protocol is tcp
+	// Set the hook function of before method execution
     s.SetBeforeFunc(func(id interface{}, method string, params interface{}) error {
         // If the function returns an error, the program stops execution and returns an error message to the client
         // return errors.New("Custom Error")
         return nil
     })
+	// Set the hook function of after method execution
     s.SetAfterFunc(func(id interface{}, method string, result interface{}) error {
         // If the function returns an error, the program stops execution and returns an error message to the client
         // return errors.New("Custom Error")
