@@ -24,7 +24,13 @@ type Service struct {
 }
 
 type Server struct {
-	Sm sync.Map
+	Sm    sync.Map
+	Hooks Hooks
+}
+
+type Hooks struct {
+	BeforeFunc func(id interface{}, method string, params interface{}) error
+	AfterFunc  func(id interface{}, method string, result interface{}) error
 }
 
 func (svr *Server) Register(s interface{}) error {
@@ -37,6 +43,11 @@ func (svr *Server) Register(s interface{}) error {
 	if _, err := svr.Sm.LoadOrStore(sname, svc); err {
 		return errors.New("rpc: service already defined: " + sname)
 	}
+	return nil
+}
+
+func (svr *Server) SetHooks(hooks Hooks) error {
+	svr.Hooks = hooks
 	return nil
 }
 
@@ -146,11 +157,29 @@ func (svr *Server) SingleHandler(jsonMap map[string]interface{}) interface{} {
 		return E(id, jsonRpc, InvalidParams)
 	}
 	result := reflect.New(m.ResultType.Elem())
+
+	// before
+	if svr.Hooks.BeforeFunc != nil {
+		err = svr.Hooks.BeforeFunc(id, method, params.Elem().Interface())
+		if err != nil {
+			return CE(id, jsonRpc, err.Error())
+		}
+	}
+
 	r := m.Method.Func.Call([]reflect.Value{s.(*Service).V, params, result})
+
 	if i := r[0].Interface(); i != nil {
 		Debug(i.(error))
 		return E(id, jsonRpc, InternalError)
 	}
+	// after
+	if svr.Hooks.AfterFunc != nil {
+		err = svr.Hooks.AfterFunc(id, method, result.Elem().Interface())
+		if err != nil {
+			return CE(id, jsonRpc, err.Error())
+		}
+	}
+
 	return S(id, jsonRpc, result.Elem().Interface())
 }
 

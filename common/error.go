@@ -7,6 +7,7 @@ const (
 	MethodNotFound = -32601
 	InvalidParams  = -32602
 	InternalError  = -32603
+	CustomError    = -32000
 )
 
 var CodeMap = map[int]string{

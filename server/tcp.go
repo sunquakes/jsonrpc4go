@@ -13,6 +13,7 @@ type Tcp struct {
 	Port    string
 	Server  common.Server
 	Options TcpOptions
+	Hooks   common.Hooks
 }
 
 type TcpOptions struct {
@@ -25,11 +26,16 @@ func NewTcpServer(ip string, port string) *Tcp {
 		"\r\n",
 		1024 * 1024 * 2,
 	}
+	hooks := common.Hooks{
+		nil,
+		nil,
+	}
 	return &Tcp{
 		ip,
 		port,
 		common.Server{},
 		options,
+		hooks,
 	}
 }
 
@@ -59,6 +65,14 @@ func (p *Tcp) Register(s interface{}) {
 
 func (p *Tcp) SetOptions(tcpOptions interface{}) {
 	p.Options = tcpOptions.(TcpOptions)
+}
+
+func (p *Tcp) SetBeforeFunc(beforeFunc func(id interface{}, method string, params interface{}) error) {
+	p.Server.Hooks.BeforeFunc = beforeFunc
+}
+
+func (p *Tcp) SetAfterFunc(afterFunc func(id interface{}, method string, result interface{}) error) {
+	p.Server.Hooks.AfterFunc = afterFunc
 }
 
 func (p *Tcp) handleFunc(ctx context.Context, conn net.Conn) {

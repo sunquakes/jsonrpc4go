@@ -2,10 +2,15 @@ package jsonrpc4go
 
 import (
 	"errors"
+	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/server"
 )
 
+type Error common.Error
+
 type ServerInterface interface {
+	SetBeforeFunc(func(id interface{}, method string, params interface{}) error)
+	SetAfterFunc(func(id interface{}, method string, result interface{}) error)
 	SetOptions(interface{})
 	Start()
 	Register(s interface{})

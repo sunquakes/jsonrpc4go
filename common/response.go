@@ -50,6 +50,21 @@ func E(id interface{}, jsonRpc string, errCode int) interface{} {
 	return res
 }
 
+func CE(id interface{}, jsonRpc string, errMessage string) interface{} {
+	e := Error{
+		CustomError,
+		errMessage,
+		nil,
+	}
+	var res interface{}
+	if id != nil {
+		res = ErrorResponse{id.(string), jsonRpc, e}
+	} else {
+		res = ErrorNotifyResponse{jsonRpc, e}
+	}
+	return res
+}
+
 func S(id interface{}, jsonRpc string, result interface{}) interface{} {
 	var res interface{}
 	if id != nil {

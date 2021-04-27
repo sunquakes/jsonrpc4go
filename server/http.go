@@ -9,16 +9,22 @@ import (
 )
 
 type Http struct {
-	Ip         string
-	Port       string
-	Server     common.Server
+	Ip     string
+	Port   string
+	Server common.Server
+	Hooks  common.Hooks
 }
 
 func NewHttpServer(ip string, port string) *Http {
+	hooks := common.Hooks{
+		nil,
+		nil,
+	}
 	return &Http{
 		ip,
 		port,
 		common.Server{},
+		hooks,
 	}
 }
 
@@ -34,7 +40,15 @@ func (p *Http) Register(s interface{}) {
 	p.Server.Register(s)
 }
 
-func (p *Http) SetOptions(tcpOptions interface{}) {
+func (p *Http) SetOptions(httpOptions interface{}) {
+}
+
+func (p *Http) SetBeforeFunc(beforeFunc func(id interface{}, method string, params interface{}) error) {
+	p.Server.Hooks.BeforeFunc = beforeFunc
+}
+
+func (p *Http) SetAfterFunc(afterFunc func(id interface{}, method string, result interface{}) error) {
+	p.Server.Hooks.AfterFunc = afterFunc
 }
 
 func (p *Http) handleFunc(w http.ResponseWriter, r *http.Request) {

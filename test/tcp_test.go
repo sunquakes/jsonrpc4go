@@ -1,6 +1,8 @@
 package test
 
 import (
+	"encoding/json"
+	"errors"
 	"github.com/sunquakes/jsonrpc4go"
 	"github.com/sunquakes/jsonrpc4go/client"
 	"github.com/sunquakes/jsonrpc4go/common"
@@ -80,7 +82,6 @@ func TestTcpBatchCall(t *testing.T) {
 	}
 }
 
-
 func TestSetOption(t *testing.T) {
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3220")
@@ -96,5 +97,60 @@ func TestSetOption(t *testing.T) {
 	s.Call("IntRpc.Add", &params, result, false)
 	if *result != 3 {
 		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
+	}
+}
+
+func TestSetHooks(t *testing.T) {
+	params := Params{1, 2}
+	go func() {
+		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3221")
+		s.SetBeforeFunc(func(id interface{}, method string, p interface{}) error {
+			if method != "IntRpc.Add" {
+				t.Errorf("Method expected be %s, but %s got", "IntRpc.Add", method)
+			}
+			if p.(Params) != params {
+				jsonParams, _ := json.Marshal(params)
+				jsonP, _ := json.Marshal(p)
+				t.Errorf("Params expected be %s, but %s got", jsonParams, jsonP)
+			}
+			return nil
+		})
+		s.SetAfterFunc(func(id interface{}, method string, r interface{}) error {
+			if method != "IntRpc.Add" {
+				t.Errorf("Method expected be %s, but %s got", "IntRpc.Add", method)
+			}
+			if r != 3 {
+				t.Errorf("Result expected be %d, but %d got", 3, r)
+			}
+			return nil
+		})
+		s.Register(new(IntRpc))
+		s.Start()
+	}()
+	time.Sleep(time.Duration(2) * time.Second)
+	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3221")
+	result := new(Result)
+	s.Call("IntRpc.Add", &params, result, false)
+	if *result != 3 {
+		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
+	}
+}
+
+func TestSetHooksCustomError(t *testing.T) {
+	params := Params{1, 2}
+	go func() {
+		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3222")
+		s.SetBeforeFunc(func(id interface{}, method string, p interface{}) error {
+			return errors.New("Custom Error")
+		})
+		s.Register(new(IntRpc))
+		s.Start()
+	}()
+	time.Sleep(time.Duration(2) * time.Second)
+	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3222")
+	result := new(Result)
+	err := s.Call("IntRpc.Add", &params, result, false)
+	if err.Error() != "Custom Error" {
+		t.Errorf("Error expected be %s, but %s got", "Custom Error", err.Error())
 	}
 }
