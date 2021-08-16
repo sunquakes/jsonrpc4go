@@ -3,28 +3,40 @@ package server
 import (
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/components/rate_limit"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 )
 
 type Http struct {
 	Ip     string
 	Port   string
 	Server common.Server
-	Hooks  common.Hooks
+	Options HttpOptions
+}
+
+type HttpOptions struct {
+	RateLimit        float64
+	RateLimitMax     int64
 }
 
 func NewHttpServer(ip string, port string) *Http {
-	hooks := common.Hooks{
-		nil,
-		nil,
+	options := HttpOptions{
+		0,
+		0,
 	}
+	rateLimit := &rate_limit.RateLimit{}
 	return &Http{
 		ip,
 		port,
-		common.Server{},
-		hooks,
+		common.Server{
+			sync.Map{},
+			common.Hooks{},
+			rateLimit,
+		},
+		options,
 	}
 }
 
@@ -41,6 +53,7 @@ func (p *Http) Register(s interface{}) {
 }
 
 func (p *Http) SetOptions(httpOptions interface{}) {
+	p.Options = httpOptions.(HttpOptions)
 }
 
 func (p *Http) SetBeforeFunc(beforeFunc func(id interface{}, method string, params interface{}) error) {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/sunquakes/jsonrpc4go/components/rate_limit"
 	"reflect"
 	"strings"
 	"sync"
@@ -24,8 +25,9 @@ type Service struct {
 }
 
 type Server struct {
-	Sm    sync.Map
-	Hooks Hooks
+	Sm        sync.Map
+	Hooks     Hooks
+	RateLimit *rate_limit.RateLimit
 }
 
 type Hooks struct {
@@ -43,11 +45,6 @@ func (svr *Server) Register(s interface{}) error {
 	if _, err := svr.Sm.LoadOrStore(sname, svc); err {
 		return errors.New("rpc: service already defined: " + sname)
 	}
-	return nil
-}
-
-func (svr *Server) SetHooks(hooks Hooks) error {
-	svr.Hooks = hooks
 	return nil
 }
 
@@ -102,6 +99,9 @@ func RegisterMethod(rm reflect.Method) *Method {
 }
 
 func (svr *Server) Handler(b []byte) []byte {
+	if !svr.RateLimit.GetToken(false) {
+		return jsonE(nil, JsonRpc, ParseError)
+	}
 	data, err := ParseRequestBody(b)
 
 	if err != nil {

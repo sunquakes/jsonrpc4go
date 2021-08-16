@@ -85,7 +85,7 @@ func TestTcpBatchCall(t *testing.T) {
 func TestSetOption(t *testing.T) {
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3220")
-		s.SetOptions(server.TcpOptions{"aaaaaa", 2 * 1024 * 1024})
+		s.SetOptions(server.TcpOptions{"aaaaaa", 2 * 1024 * 1024, 0, 0})
 		s.Register(new(IntRpc))
 		s.Start()
 	}()

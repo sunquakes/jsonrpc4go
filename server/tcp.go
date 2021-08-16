@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/components/rate_limit"
 	"log"
 	"net"
+	"sync"
 )
 
 type Tcp struct {
@@ -13,29 +15,32 @@ type Tcp struct {
 	Port    string
 	Server  common.Server
 	Options TcpOptions
-	Hooks   common.Hooks
 }
 
 type TcpOptions struct {
 	PackageEof       string
 	PackageMaxLength int32
+	RateLimit        float64
+	RateLimitMax     int64
 }
 
 func NewTcpServer(ip string, port string) *Tcp {
 	options := TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
+		0,
+		0,
 	}
-	hooks := common.Hooks{
-		nil,
-		nil,
-	}
+	rateLimit := &rate_limit.RateLimit{}
 	return &Tcp{
 		ip,
 		port,
-		common.Server{},
+		common.Server{
+			sync.Map{},
+			common.Hooks{},
+			rateLimit,
+		},
 		options,
-		hooks,
 	}
 }
 
@@ -49,6 +54,7 @@ func (p *Tcp) Start() {
 	log.Printf("Listening tcp://%s:%s", p.Ip, p.Port)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	p.Server.RateLimit.GetBucket(p.Options.RateLimit, p.Options.RateLimitMax)
 	for {
 		conn, err := listener.AcceptTCP()
 		if err != nil {
