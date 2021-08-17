@@ -1,6 +1,7 @@
 package rate_limit
 
 import (
+	"math"
 	"time"
 )
 
@@ -16,7 +17,7 @@ func (rl *RateLimit) GetBucket(rate float64, max int64) chan struct{} {
 	}
 	rl.Enable = true
 	*rl.Bucket = make(chan struct{}, max)
-	ticker := time.NewTicker(time.Second / time.Duration(rate))
+	ticker := time.NewTicker(time.Microsecond * time.Duration(1/rate*math.Pow(10, 6)))
 	go func() {
 		for {
 			select {

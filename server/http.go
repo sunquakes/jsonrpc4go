@@ -56,6 +56,10 @@ func (p *Http) SetOptions(httpOptions interface{}) {
 	p.Options = httpOptions.(HttpOptions)
 }
 
+func (p *Http) SetRateLimit(rate float64, max int64) {
+	p.Server.RateLimit.GetBucket(rate, max)
+}
+
 func (p *Http) SetBeforeFunc(beforeFunc func(id interface{}, method string, params interface{}) error) {
 	p.Server.Hooks.BeforeFunc = beforeFunc
 }

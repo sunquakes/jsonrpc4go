@@ -12,6 +12,7 @@ type ServerInterface interface {
 	SetBeforeFunc(func(id interface{}, method string, params interface{}) error)
 	SetAfterFunc(func(id interface{}, method string, result interface{}) error)
 	SetOptions(interface{})
+	SetRateLimit(float64, int64)
 	Start()
 	Register(s interface{})
 }

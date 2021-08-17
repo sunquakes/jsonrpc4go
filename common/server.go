@@ -99,11 +99,7 @@ func RegisterMethod(rm reflect.Method) *Method {
 }
 
 func (svr *Server) Handler(b []byte) []byte {
-	if !svr.RateLimit.GetToken(false) {
-		return jsonE(nil, JsonRpc, ParseError)
-	}
 	data, err := ParseRequestBody(b)
-
 	if err != nil {
 		return jsonE(nil, JsonRpc, ParseError)
 	}
@@ -131,6 +127,11 @@ func (svr *Server) SingleHandler(jsonMap map[string]interface{}) interface{} {
 	if errCode != WithoutError {
 		return E(id, jsonRpc, errCode)
 	}
+
+	if !svr.RateLimit.GetToken(false) {
+		return CE(id, JsonRpc, "Too many requests")
+	}
+
 	//if jsonRpc != JsonRpc {
 	//	return E(id, jsonRpc, InvalidRequest)
 	//}

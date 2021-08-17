@@ -20,16 +20,12 @@ type Tcp struct {
 type TcpOptions struct {
 	PackageEof       string
 	PackageMaxLength int32
-	RateLimit        float64
-	RateLimitMax     int64
 }
 
 func NewTcpServer(ip string, port string) *Tcp {
 	options := TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
-		0,
-		0,
 	}
 	rateLimit := &rate_limit.RateLimit{}
 	return &Tcp{
@@ -54,7 +50,6 @@ func (p *Tcp) Start() {
 	log.Printf("Listening tcp://%s:%s", p.Ip, p.Port)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	p.Server.RateLimit.GetBucket(p.Options.RateLimit, p.Options.RateLimitMax)
 	for {
 		conn, err := listener.AcceptTCP()
 		if err != nil {
@@ -71,6 +66,10 @@ func (p *Tcp) Register(s interface{}) {
 
 func (p *Tcp) SetOptions(tcpOptions interface{}) {
 	p.Options = tcpOptions.(TcpOptions)
+}
+
+func (p *Tcp) SetRateLimit(rate float64, max int64) {
+	p.Server.RateLimit.GetBucket(rate, max)
 }
 
 func (p *Tcp) SetBeforeFunc(beforeFunc func(id interface{}, method string, params interface{}) error) {
