@@ -3,11 +3,6 @@
 ```
 go get -u github.com/sunquakes/jsonrpc4go
 ```
-## Test
-```
-go test -v ./test/...
-```
-
 ## Getting started
 - Server
 ```go
@@ -46,6 +41,7 @@ func main() {
 	s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", "3232") // the protocol is http
 	// s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3232") // the protocol is tcp
 	// s.SetOptions(server.TcpOptions{"aaaaaa", 2 * 1024 * 1024}) // Custom package EOF when the protocol is tcp
+	// s.SetRateLimit(20, 10) //The maximum concurrent number is 10, The maximum request speed is 20 times per second
 	// Set the hook function of before method execution
     s.SetBeforeFunc(func(id interface{}, method string, params interface{}) error {
         // If the function returns an error, the program stops execution and returns an error message to the client
@@ -115,4 +111,8 @@ func main() {
 	fmt.Println(*err4) // nil
 	fmt.Println(*result4) // 5
 }
+```
+## Test
+```
+go test -v ./test/...
 ```
