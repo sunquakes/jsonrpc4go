@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
-	"github.com/sunquakes/jsonrpc4go/components/rate_limit"
+	"golang.org/x/time/rate"
 	"log"
 	"net"
 	"sync"
@@ -27,14 +27,13 @@ func NewTcpServer(ip string, port string) *Tcp {
 		"\r\n",
 		1024 * 1024 * 2,
 	}
-	rateLimit := &rate_limit.RateLimit{}
 	return &Tcp{
 		ip,
 		port,
 		common.Server{
 			sync.Map{},
 			common.Hooks{},
-			rateLimit,
+			nil,
 		},
 		options,
 	}
@@ -68,8 +67,8 @@ func (p *Tcp) SetOptions(tcpOptions interface{}) {
 	p.Options = tcpOptions.(TcpOptions)
 }
 
-func (p *Tcp) SetRateLimit(rate float64, max int64) {
-	p.Server.RateLimit.GetBucket(rate, max)
+func (p *Tcp) SetRateLimit(r rate.Limit, b int) {
+	p.Server.RateLimiter = rate.NewLimiter(r, b);
 }
 
 func (p *Tcp) SetBeforeFunc(beforeFunc func(id interface{}, method string, params interface{}) error) {

@@ -3,7 +3,7 @@ package server
 import (
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
-	"github.com/sunquakes/jsonrpc4go/components/rate_limit"
+	"golang.org/x/time/rate"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -18,23 +18,17 @@ type Http struct {
 }
 
 type HttpOptions struct {
-	RateLimit        float64
-	RateLimitMax     int64
 }
 
 func NewHttpServer(ip string, port string) *Http {
-	options := HttpOptions{
-		0,
-		0,
-	}
-	rateLimit := &rate_limit.RateLimit{}
+	options := HttpOptions{}
 	return &Http{
 		ip,
 		port,
 		common.Server{
 			sync.Map{},
 			common.Hooks{},
-			rateLimit,
+			nil,
 		},
 		options,
 	}
@@ -56,8 +50,8 @@ func (p *Http) SetOptions(httpOptions interface{}) {
 	p.Options = httpOptions.(HttpOptions)
 }
 
-func (p *Http) SetRateLimit(rate float64, max int64) {
-	p.Server.RateLimit.GetBucket(rate, max)
+func (p *Http) SetRateLimit(r rate.Limit, b int) {
+	p.Server.RateLimiter = rate.NewLimiter(r, b);
 }
 
 func (p *Http) SetBeforeFunc(beforeFunc func(id interface{}, method string, params interface{}) error) {
