@@ -180,3 +180,35 @@ func TestRateLimit(t *testing.T) {
 		t.Errorf("Error expected be %s, but %s got", "nil", err.Error())
 	}
 }
+
+type LongRpc struct{}
+
+type LongParams struct {
+	A string `json:"a"`
+	B string `json:"b"`
+}
+
+type LongResult = string
+
+func (i *LongRpc) Add(params *LongParams, result *LongResult) error {
+	a := params.A + params.B
+	*result = interface{}(a).(LongResult)
+	return nil
+}
+
+func TestLongPackageTcpCall(t *testing.T) {
+	go func() {
+		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3609")
+		s.Register(new(LongRpc))
+		s.Start()
+	}()
+	time.Sleep(time.Duration(2) * time.Second)
+	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3609")
+	params := LongParams{LongString1, LongString2}
+	result := new(LongResult)
+	s.Call("LongRpc.Add", &params, result, false)
+	ls := LongString1 + LongString2
+	if *result != ls {
+		t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
+	}
+}

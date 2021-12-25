@@ -7,6 +7,7 @@ import (
 	"golang.org/x/time/rate"
 	"log"
 	"net"
+	"reflect"
 	"sync"
 )
 
@@ -88,17 +89,31 @@ func (p *Tcp) handleFunc(ctx context.Context, conn net.Conn) {
 		//	do nothing
 	}
 	for {
-		var buf = make([]byte, p.Options.PackageMaxLength)
-		n, err := conn.Read(buf)
-		if err != nil {
-			if n == 0 {
-				continue
-			}
-			common.Debug(err.Error())
-			break
-		}
+		var (
+			buf  = make([]byte, 1)
+			data []byte
+		)
 		l := len([]byte(p.Options.PackageEof))
-		res := p.Server.Handler(buf[:n-l])
+
+		for {
+			n, err := conn.Read(buf)
+			if err != nil {
+				if n == 0 {
+					continue
+				}
+				common.Debug(err.Error())
+				break
+			}
+			data = append(data, buf...)
+			dl := len(data)
+			if dl >= l && reflect.DeepEqual(data[dl-l:], []byte(p.Options.PackageEof)) {
+				break
+			}
+		}
+		dl := len(data)
+		data = data[:dl-l]
+
+		res := p.Server.Handler(data)
 		res = append(res, []byte(p.Options.PackageEof)...)
 		conn.Write(res)
 	}

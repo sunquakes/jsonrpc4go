@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
 	"net"
+	"reflect"
 	"strconv"
 	"time"
 )
@@ -95,18 +96,29 @@ func (p *Tcp) Call(method string, params interface{}, result interface{}, isNoti
 }
 
 func (p *Tcp) handleFunc(b []byte, result interface{}) error {
-	var err error
+	var (
+		err  error
+		buf  = make([]byte, 1)
+		data []byte
+	)
+	l := len([]byte(p.Options.PackageEof))
 	_, err = p.Conn.Write(b)
 	if err != nil {
 		return err
 	}
-	var buf = make([]byte, p.Options.PackageMaxLength)
-	n, err := p.Conn.Read(buf)
-	if err != nil {
-		return err
+	for {
+		_, err := p.Conn.Read(buf)
+		if err != nil {
+			return err
+		}
+		data = append(data, buf...)
+		dl := len(data)
+		if dl >= l && reflect.DeepEqual(data[dl-l:], []byte(p.Options.PackageEof)) {
+			break
+		}
 	}
-	l := len([]byte(p.Options.PackageEof))
-	buf = buf[:n-l]
-	err = common.GetResult(buf, result)
+	dl := len(data)
+	data = data[:dl-l]
+	err = common.GetResult(data, result)
 	return err
 }
