@@ -68,13 +68,13 @@ func main() {
 go test -v ./test/...
 ```
 ## More features
-- 1.TCP protocol
+- 1. TCP protocol
 ```go
 s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3232") // the protocol is tcp
 
 c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3232") // the protocol is tcp
 ```
-- 2.Hooks-Add the following code before 's.Start()'
+- 2. Hooks (Add the following code before 's.Start()')
 ```go
 // Set the hook function of before method execution
 s.SetBeforeFunc(func(id interface{}, method string, params interface{}) error {
@@ -89,18 +89,18 @@ s.SetAfterFunc(func(id interface{}, method string, result interface{}) error {
     return nil
 })
 ```
-- 3.Rate limit-Add the following code before 's.Start()'
+- 3. Rate limit (Add the following code before 's.Start()')
 ```go
 s.SetRateLimit(20, 10) //The maximum concurrent number is 10, The maximum request speed is 20 times per second
 ```
-- 4.Custom package EOF when the protocol is tcp
+- 4. Custom package EOF when the protocol is tcp
 ```go
 // Add the following code before 's.Start()'
 s.SetOptions(server.TcpOptions{"aaaaaa", nil}) // Custom package EOF when the protocol is tcp
 // Add the following code before 'c.Call()' or 'c.BatchCall()'
 c.SetOptions(client.TcpOptions{"aaaaaa", nil}) // Custom package EOF when the protocol is tcp
 ```
-- 5.Notify
+- 5. Notify
 ```go
 // notify
 result2 := new(Result2)
@@ -110,7 +110,7 @@ err2 := c.Call("int_rpc/Add2", Params{1, 6}, result2, true) // or "IntRpc/Add2",
 fmt.Println(err2) // nil
 fmt.Println(*result2) // {7}
 ```
-- 6.Batch call
+- 6. Batch call
 ```go
 // batch call
 result3 := new(Result)
