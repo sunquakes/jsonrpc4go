@@ -1,10 +1,10 @@
 package client
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
 	"net"
-	"reflect"
 	"strconv"
 	"time"
 )
@@ -19,7 +19,7 @@ type Tcp struct {
 
 type TcpOptions struct {
 	PackageEof       string
-	PackageMaxLength int32
+	PackageMaxLength int64
 }
 
 func NewTcpClient(ip string, port string) (*Tcp, error) {
@@ -96,29 +96,33 @@ func (p *Tcp) Call(method string, params interface{}, result interface{}, isNoti
 }
 
 func (p *Tcp) handleFunc(b []byte, result interface{}) error {
-	var (
-		err  error
-		buf  = make([]byte, 1)
-		data []byte
-	)
-	l := len([]byte(p.Options.PackageEof))
+	var err error
 	_, err = p.Conn.Write(b)
 	if err != nil {
 		return err
 	}
+
+	eofb := []byte(p.Options.PackageEof)
+	eofl := len(eofb)
+	var (
+		data []byte
+	)
+	l := 0
 	for {
-		_, err := p.Conn.Read(buf)
+		var buf = make([]byte, p.Options.PackageMaxLength)
+		n, err := p.Conn.Read(buf)
 		if err != nil {
-			return err
+			if n == 0 {
+				return err
+			}
+			common.Debug(err.Error())
 		}
-		data = append(data, buf...)
-		dl := len(data)
-		if dl >= l && reflect.DeepEqual(data[dl-l:], []byte(p.Options.PackageEof)) {
+		l += n
+		data = append(data, buf[:n]...)
+		if bytes.Equal(data[l-eofl:], eofb) {
 			break
 		}
 	}
-	dl := len(data)
-	data = data[:dl-l]
-	err = common.GetResult(data, result)
+	err = common.GetResult(data[:l-eofl], result)
 	return err
 }

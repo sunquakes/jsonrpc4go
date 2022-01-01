@@ -199,16 +199,58 @@ func (i *LongRpc) Add(params *LongParams, result *LongResult) error {
 func TestLongPackageTcpCall(t *testing.T) {
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3609")
+		s.SetOptions(server.TcpOptions{"\r\n",  2 * 1024 * 1024})
 		s.Register(new(LongRpc))
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3609")
-	params := LongParams{LongString1, LongString2}
-	result := new(LongResult)
-	s.Call("LongRpc.Add", &params, result, false)
-	ls := LongString1 + LongString2
-	if *result != ls {
-		t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
+	for i := 0; i < 11; i++ {
+		go func() {
+			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3609")
+			c.SetOptions(client.TcpOptions{"\r\n", 2 * 1024 * 1024})
+			params := LongParams{LongString1, LongString2}
+			result := new(LongResult)
+			for j := 0; j < 100; j++ {
+				c.Call("LongRpc.Add", &params, result, false)
+				ls := LongString1 + LongString2
+				if *result != ls {
+					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
+				}
+			}
+			time.Sleep(time.Duration(2) * time.Second)
+			for j := 0; j < 100; j++ {
+				c.Call("LongRpc.Add", &params, result, false)
+				ls := LongString1 + LongString2
+				if *result != ls {
+					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
+				}
+			}
+		}()
+	}
+	time.Sleep(time.Duration(10) * time.Second)
+}
+
+
+func TestCoTcpCall(t *testing.T) {
+	go func() {
+		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3610")
+		s.Register(new(IntRpc))
+		s.Start()
+	}()
+	time.Sleep(time.Duration(2) * time.Second)
+
+	for i := 0; i < 100; i++ {
+		go func() {
+			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3610")
+			params := Params{1, 2}
+			result := new(Result)
+			for j := 0; j < 100; j++ {
+				c.Call("IntRpc.Add", &params, result, false)
+				if *result != 3 {
+					t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
+				}
+			}
+			time.Sleep(time.Duration(100) * time.Second)
+		}()
 	}
 }

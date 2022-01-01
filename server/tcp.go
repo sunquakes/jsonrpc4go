@@ -1,13 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
 	"golang.org/x/time/rate"
 	"log"
 	"net"
-	"reflect"
 	"sync"
 )
 
@@ -20,7 +20,7 @@ type Tcp struct {
 
 type TcpOptions struct {
 	PackageEof       string
-	PackageMaxLength int32
+	PackageMaxLength int64
 }
 
 func NewTcpServer(ip string, port string) *Tcp {
@@ -69,7 +69,7 @@ func (p *Tcp) SetOptions(tcpOptions interface{}) {
 }
 
 func (p *Tcp) SetRateLimit(r rate.Limit, b int) {
-	p.Server.RateLimiter = rate.NewLimiter(r, b);
+	p.Server.RateLimiter = rate.NewLimiter(r, b)
 }
 
 func (p *Tcp) SetBeforeFunc(beforeFunc func(id interface{}, method string, params interface{}) error) {
@@ -88,33 +88,30 @@ func (p *Tcp) handleFunc(ctx context.Context, conn net.Conn) {
 	default:
 		//	do nothing
 	}
+	eofb := []byte(p.Options.PackageEof)
+	eofl := len(eofb)
 	for {
 		var (
-			buf  = make([]byte, 1)
 			data []byte
 		)
-		l := len([]byte(p.Options.PackageEof))
-
+		l := 0
 		for {
+			var buf = make([]byte, p.Options.PackageMaxLength)
 			n, err := conn.Read(buf)
 			if err != nil {
 				if n == 0 {
-					continue
+					return
 				}
 				common.Debug(err.Error())
-				break
 			}
-			data = append(data, buf...)
-			dl := len(data)
-			if dl >= l && reflect.DeepEqual(data[dl-l:], []byte(p.Options.PackageEof)) {
+			l += n
+			data = append(data, buf[:n]...)
+			if bytes.Equal(data[l-eofl:], eofb) {
 				break
 			}
 		}
-		dl := len(data)
-		data = data[:dl-l]
-
-		res := p.Server.Handler(data)
-		res = append(res, []byte(p.Options.PackageEof)...)
+		res := p.Server.Handler(data[:l-eofl])
+		res = append(res, eofb...)
 		conn.Write(res)
 	}
 }
