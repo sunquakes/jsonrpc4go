@@ -230,7 +230,6 @@ func TestLongPackageTcpCall(t *testing.T) {
 	time.Sleep(time.Duration(10) * time.Second)
 }
 
-
 func TestCoTcpCall(t *testing.T) {
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3610")
