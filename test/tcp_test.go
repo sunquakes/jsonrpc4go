@@ -7,6 +7,7 @@ import (
 	"github.com/sunquakes/jsonrpc4go/client"
 	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/server"
+	"sync"
 	"testing"
 	"time"
 )
@@ -199,13 +200,16 @@ func (i *LongRpc) Add(params *LongParams, result *LongResult) error {
 func TestLongPackageTcpCall(t *testing.T) {
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3609")
-		s.SetOptions(server.TcpOptions{"\r\n",  2 * 1024 * 1024})
+		s.SetOptions(server.TcpOptions{"\r\n", 2 * 1024 * 1024})
 		s.Register(new(LongRpc))
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
+	var wg sync.WaitGroup
 	for i := 0; i < 11; i++ {
-		go func() {
+		wg.Add(1)
+		go func(group *sync.WaitGroup) {
+			defer group.Done()
 			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3609")
 			c.SetOptions(client.TcpOptions{"\r\n", 2 * 1024 * 1024})
 			params := LongParams{LongString1, LongString2}
@@ -225,9 +229,9 @@ func TestLongPackageTcpCall(t *testing.T) {
 					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
 				}
 			}
-		}()
+		}(&wg)
 	}
-	time.Sleep(time.Duration(10) * time.Second)
+	wg.Wait()
 }
 
 func TestCoTcpCall(t *testing.T) {
@@ -238,18 +242,21 @@ func TestCoTcpCall(t *testing.T) {
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
 
+	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {
-		go func() {
+		wg.Add(1)
+		go func(group *sync.WaitGroup) {
+			defer group.Done()
 			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3610")
-			params := Params{1, 2}
-			result := new(Result)
 			for j := 0; j < 100; j++ {
+				params := Params{i, j}
+				result := new(Result)
 				c.Call("IntRpc.Add", &params, result, false)
-				if *result != 3 {
-					t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
+				if *result != (i + j) {
+					t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, (i + j), *result)
 				}
 			}
-			time.Sleep(time.Duration(100) * time.Second)
-		}()
+		}(&wg)
 	}
+	wg.Wait()
 }
