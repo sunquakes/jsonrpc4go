@@ -16,6 +16,7 @@ type Tcp struct {
 	Port    string
 	Server  common.Server
 	Options TcpOptions
+	Event   chan int
 }
 
 type TcpOptions struct {
@@ -37,6 +38,7 @@ func NewTcpServer(ip string, port string) *Tcp {
 			nil,
 		},
 		options,
+		make(chan int, 1),
 	}
 }
 
@@ -50,6 +52,7 @@ func (p *Tcp) Start() {
 	log.Printf("Listening tcp://%s:%s", p.Ip, p.Port)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	p.Event <- 0
 	for {
 		conn, err := listener.AcceptTCP()
 		if err != nil {
@@ -78,6 +81,10 @@ func (p *Tcp) SetBeforeFunc(beforeFunc func(id interface{}, method string, param
 
 func (p *Tcp) SetAfterFunc(afterFunc func(id interface{}, method string, result interface{}) error) {
 	p.Server.Hooks.AfterFunc = afterFunc
+}
+
+func (p *Tcp) GetEvent() <-chan int {
+	return p.Event
 }
 
 func (p *Tcp) handleFunc(ctx context.Context, conn net.Conn) {

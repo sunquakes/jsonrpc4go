@@ -11,10 +11,11 @@ import (
 )
 
 type Http struct {
-	Ip     string
-	Port   string
-	Server common.Server
+	Ip      string
+	Port    string
+	Server  common.Server
 	Options HttpOptions
+	Event   chan int
 }
 
 type HttpOptions struct {
@@ -31,6 +32,7 @@ func NewHttpServer(ip string, port string) *Http {
 			nil,
 		},
 		options,
+		make(chan int, 1),
 	}
 }
 
@@ -51,7 +53,7 @@ func (p *Http) SetOptions(httpOptions interface{}) {
 }
 
 func (p *Http) SetRateLimit(r rate.Limit, b int) {
-	p.Server.RateLimiter = rate.NewLimiter(r, b);
+	p.Server.RateLimiter = rate.NewLimiter(r, b)
 }
 
 func (p *Http) SetBeforeFunc(beforeFunc func(id interface{}, method string, params interface{}) error) {
@@ -60,6 +62,10 @@ func (p *Http) SetBeforeFunc(beforeFunc func(id interface{}, method string, para
 
 func (p *Http) SetAfterFunc(afterFunc func(id interface{}, method string, result interface{}) error) {
 	p.Server.Hooks.AfterFunc = afterFunc
+}
+
+func (p *Http) GetEvent() <-chan int {
+	return p.Event
 }
 
 func (p *Http) handleFunc(w http.ResponseWriter, r *http.Request) {

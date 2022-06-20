@@ -16,6 +16,7 @@ type ServerInterface interface {
 	SetRateLimit(rate.Limit, int)
 	Start()
 	Register(s interface{})
+	GetEvent() <-chan int
 }
 
 func NewServer(protocol string, ip string, port string) (ServerInterface, error) {

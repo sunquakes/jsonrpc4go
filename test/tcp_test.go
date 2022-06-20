@@ -13,16 +13,16 @@ import (
 )
 
 func TestTcpCall(t *testing.T) {
+	s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3601")
+	s.Register(new(IntRpc))
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3601")
-		s.Register(new(IntRpc))
 		s.Start()
 	}()
-	time.Sleep(time.Duration(2) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3601")
+	<-s.GetEvent()
+	c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3601")
 	params := Params{1, 2}
 	result := new(Result)
-	s.Call("IntRpc.Add", &params, result, false)
+	c.Call("IntRpc.Add", &params, result, false)
 	if *result != 3 {
 		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
 	}
