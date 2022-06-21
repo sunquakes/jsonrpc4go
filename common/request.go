@@ -41,18 +41,6 @@ type NotifyRequest struct {
 	Params  interface{} `json:"params"`
 }
 
-func GetRequestBody(b []byte) interface{} {
-	st := GetRequestStruct(b)
-	GetStructFromJson(b, &st)
-	return st
-}
-
-func GetRequestParams(b []byte, params interface{}) error {
-	Debug(reflect.TypeOf(params))
-	GetStructFromJson(b, params)
-	return errors.New("test")
-}
-
 func ParseRequestMethod(method string) (sName string, mName string, err error) {
 	var (
 		m  string
@@ -90,7 +78,7 @@ func ParseRequestMethod(method string) (sName string, mName string, err error) {
 }
 
 func FilterRequestBody(jsonMap map[string]interface{}) map[string]interface{} {
-	for k, _ := range jsonMap {
+	for k := range jsonMap {
 		if _, ok := RequiredFields[k]; !ok {
 			delete(jsonMap, k)
 		}
@@ -125,35 +113,6 @@ func ParseRequestBody(b []byte) (interface{}, error) {
 		Debug(err)
 	}
 	return jsonData, err
-}
-
-func GetRequestStruct(jsonMap interface{}) interface{} {
-	if _, ok := jsonMap.(map[string]interface{})["id"]; ok != true {
-		return NotifyRequest{}
-	} else {
-		return Request{}
-	}
-}
-
-func GetStructFromJson(d []byte, s interface{}) error {
-	var (
-		m   string
-		err error
-	)
-	if reflect.TypeOf(s).Kind() != reflect.Ptr {
-		m = fmt.Sprintf("reflect: Elem of invalid type %s, need reflect.Ptr", reflect.TypeOf(s))
-		Debug(m)
-		return errors.New(m)
-	}
-
-	var jsonData interface{}
-	err = json.Unmarshal(d, &jsonData)
-	if err != nil {
-		Debug(err)
-		return err
-	}
-	GetStruct(jsonData, s)
-	return nil
 }
 
 func GetStruct(d interface{}, s interface{}) error {

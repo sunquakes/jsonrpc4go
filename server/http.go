@@ -41,11 +41,18 @@ func (p *Http) Start() {
 	mux.HandleFunc("/", p.handleFunc)
 	var url = fmt.Sprintf("%s:%s", p.Ip, p.Port)
 	log.Printf("Listening http://%s:%s", p.Ip, p.Port)
-	http.ListenAndServe(url, mux)
+	p.Event <- 0
+	err := http.ListenAndServe(url, mux)
+	if err != nil {
+		log.Panic(err.Error())
+	}
 }
 
 func (p *Http) Register(s interface{}) {
-	p.Server.Register(s)
+	err := p.Server.Register(s)
+	if err != nil {
+		log.Panic(err.Error())
+	}
 }
 
 func (p *Http) SetOptions(httpOptions interface{}) {
@@ -83,5 +90,8 @@ func (p *Http) handleFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res := p.Server.Handler(data)
-	w.Write(res)
+	_, err = w.Write(res)
+	if err != nil {
+		log.Panic(err.Error())
+	}
 }

@@ -44,9 +44,9 @@ func NewTcpServer(ip string, port string) *Tcp {
 
 func (p *Tcp) Start() {
 	var addr = fmt.Sprintf("%s:%s", p.Ip, p.Port)
-	tcpAddr, err := net.ResolveTCPAddr("tcp", addr) //解析tcp服务
+	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
-		common.Debug(err.Error())
+		log.Panic(err.Error())
 	}
 	listener, _ := net.ListenTCP("tcp", tcpAddr)
 	log.Printf("Listening tcp://%s:%s", p.Ip, p.Port)
@@ -56,7 +56,7 @@ func (p *Tcp) Start() {
 	for {
 		conn, err := listener.AcceptTCP()
 		if err != nil {
-			common.Debug(err.Error())
+			log.Panic(err.Error())
 			continue
 		}
 		go p.handleFunc(ctx, conn)
