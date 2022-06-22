@@ -63,11 +63,11 @@ func (p *Tcp) Start() {
 	}
 }
 
-func (p *Tcp) Register(s interface{}) {
+func (p *Tcp) Register(s any) {
 	p.Server.Register(s)
 }
 
-func (p *Tcp) SetOptions(tcpOptions interface{}) {
+func (p *Tcp) SetOptions(tcpOptions any) {
 	p.Options = tcpOptions.(TcpOptions)
 }
 
@@ -75,11 +75,11 @@ func (p *Tcp) SetRateLimit(r rate.Limit, b int) {
 	p.Server.RateLimiter = rate.NewLimiter(r, b)
 }
 
-func (p *Tcp) SetBeforeFunc(beforeFunc func(id interface{}, method string, params interface{}) error) {
+func (p *Tcp) SetBeforeFunc(beforeFunc func(id any, method string, params any) error) {
 	p.Server.Hooks.BeforeFunc = beforeFunc
 }
 
-func (p *Tcp) SetAfterFunc(afterFunc func(id interface{}, method string, result interface{}) error) {
+func (p *Tcp) SetAfterFunc(afterFunc func(id any, method string, result any) error) {
 	p.Server.Hooks.AfterFunc = afterFunc
 }
 

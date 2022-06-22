@@ -18,7 +18,7 @@ type Result = int
 
 func (i *IntRpc) Add(params *Params, result *Result) error {
 	a := params.A + params.B
-	*result = interface{}(a).(Result)
+	*result = any(a).(Result)
 	return nil
 }
 

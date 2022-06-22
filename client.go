@@ -5,20 +5,13 @@ import (
 	"github.com/sunquakes/jsonrpc4go/client"
 )
 
-type ClientInterface interface {
-	SetOptions(interface{})
-	Call(string, interface{}, interface{}, bool) error
-	BatchAppend(string, interface{}, interface{}, bool) *error
-	BatchCall() error
-}
-
-func NewClient(protocol string, ip string, port string) (ClientInterface, error) {
-	var err error
+func NewClient(protocol string, ip string, port string) (client.Client, error) {
 	switch protocol {
 	case "http":
-		return client.NewHttpClient(ip, port), err
+		return client.NewClinet(&client.Http{ip, port})
 	case "tcp":
-		return client.NewTcpClient(ip, port)
+		return client.NewClinet(&client.Tcp{ip, port})
+	default:
+		return nil, errors.New("The protocol can not be supported")
 	}
-	return nil, errors.New("The protocol can not be supported")
 }

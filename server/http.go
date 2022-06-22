@@ -48,14 +48,14 @@ func (p *Http) Start() {
 	}
 }
 
-func (p *Http) Register(s interface{}) {
+func (p *Http) Register(s any) {
 	err := p.Server.Register(s)
 	if err != nil {
 		log.Panic(err.Error())
 	}
 }
 
-func (p *Http) SetOptions(httpOptions interface{}) {
+func (p *Http) SetOptions(httpOptions any) {
 	p.Options = httpOptions.(HttpOptions)
 }
 
@@ -63,11 +63,11 @@ func (p *Http) SetRateLimit(r rate.Limit, b int) {
 	p.Server.RateLimiter = rate.NewLimiter(r, b)
 }
 
-func (p *Http) SetBeforeFunc(beforeFunc func(id interface{}, method string, params interface{}) error) {
+func (p *Http) SetBeforeFunc(beforeFunc func(id any, method string, params any) error) {
 	p.Server.Hooks.BeforeFunc = beforeFunc
 }
 
-func (p *Http) SetAfterFunc(afterFunc func(id interface{}, method string, result interface{}) error) {
+func (p *Http) SetAfterFunc(afterFunc func(id any, method string, result any) error) {
 	p.Server.Hooks.AfterFunc = afterFunc
 }
 

@@ -105,7 +105,7 @@ func TestSetHooks(t *testing.T) {
 	params := Params{1, 2}
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3606")
-		s.SetBeforeFunc(func(id interface{}, method string, p interface{}) error {
+		s.SetBeforeFunc(func(id any, method string, p any) error {
 			if method != "IntRpc.Add" {
 				t.Errorf("Method expected be %s, but %s got", "IntRpc.Add", method)
 			}
@@ -116,7 +116,7 @@ func TestSetHooks(t *testing.T) {
 			}
 			return nil
 		})
-		s.SetAfterFunc(func(id interface{}, method string, r interface{}) error {
+		s.SetAfterFunc(func(id any, method string, r any) error {
 			if method != "IntRpc.Add" {
 				t.Errorf("Method expected be %s, but %s got", "IntRpc.Add", method)
 			}
@@ -141,7 +141,7 @@ func TestSetHooksCustomError(t *testing.T) {
 	params := Params{1, 2}
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3607")
-		s.SetBeforeFunc(func(id interface{}, method string, p interface{}) error {
+		s.SetBeforeFunc(func(id any, method string, p any) error {
 			return errors.New("Custom Error")
 		})
 		s.Register(new(IntRpc))
@@ -193,7 +193,7 @@ type LongResult = string
 
 func (i *LongRpc) Add(params *LongParams, result *LongResult) error {
 	a := params.A + params.B
-	*result = interface{}(a).(LongResult)
+	*result = any(a).(LongResult)
 	return nil
 }
 

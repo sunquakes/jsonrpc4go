@@ -22,23 +22,23 @@ var RequiredFields = map[string]string{
 
 type SingleRequest struct {
 	Method   string
-	Params   interface{}
-	Result   interface{}
+	Params   any
+	Result   any
 	Error    *error
 	IsNotify bool
 }
 
 type Request struct {
-	Id      string      `json:"id"`
-	JsonRpc string      `json:"jsonrpc"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params"`
+	Id      string `json:"id"`
+	JsonRpc string `json:"jsonrpc"`
+	Method  string `json:"method"`
+	Params  any    `json:"params"`
 }
 
 type NotifyRequest struct {
-	JsonRpc string      `json:"jsonrpc"`
-	Method  string      `json:"method"`
-	Params  interface{} `json:"params"`
+	JsonRpc string `json:"jsonrpc"`
+	Method  string `json:"method"`
+	Params  any    `json:"params"`
 }
 
 func ParseRequestMethod(method string) (sName string, mName string, err error) {
@@ -77,7 +77,7 @@ func ParseRequestMethod(method string) (sName string, mName string, err error) {
 	return sName, mName, err
 }
 
-func FilterRequestBody(jsonMap map[string]interface{}) map[string]interface{} {
+func FilterRequestBody(jsonMap map[string]any) map[string]any {
 	for k := range jsonMap {
 		if _, ok := RequiredFields[k]; !ok {
 			delete(jsonMap, k)
@@ -86,7 +86,7 @@ func FilterRequestBody(jsonMap map[string]interface{}) map[string]interface{} {
 	return jsonMap
 }
 
-func ParseSingleRequestBody(jsonMap map[string]interface{}) (id interface{}, jsonrpc string, method string, params interface{}, errCode int) {
+func ParseSingleRequestBody(jsonMap map[string]any) (id any, jsonrpc string, method string, params any, errCode int) {
 	jsonMap = FilterRequestBody(jsonMap)
 	if _, ok := jsonMap["id"]; ok != true {
 		st := NotifyRequest{}
@@ -105,9 +105,9 @@ func ParseSingleRequestBody(jsonMap map[string]interface{}) (id interface{}, jso
 	}
 }
 
-func ParseRequestBody(b []byte) (interface{}, error) {
+func ParseRequestBody(b []byte) (any, error) {
 	var err error
-	var jsonData interface{}
+	var jsonData any
 	err = json.Unmarshal(b, &jsonData)
 	if err != nil {
 		Debug(err)
@@ -115,7 +115,7 @@ func ParseRequestBody(b []byte) (interface{}, error) {
 	return jsonData, err
 }
 
-func GetStruct(d interface{}, s interface{}) error {
+func GetStruct(d any, s any) error {
 	var (
 		m string
 		t reflect.Type
@@ -126,23 +126,23 @@ func GetStruct(d interface{}, s interface{}) error {
 		return errors.New(m)
 	}
 	t = reflect.TypeOf(s).Elem()
-	var jsonMap = make(map[string]interface{})
+	var jsonMap = make(map[string]any)
 	switch reflect.TypeOf(d).Kind() {
 	case reflect.Map:
-		if t.NumField() != len(d.(map[string]interface{})) {
+		if t.NumField() != len(d.(map[string]any)) {
 			m = fmt.Sprintf("json: The number of parameters does not match")
 			Debug(m)
 			return errors.New(m)
 		}
 		for k := 0; k < t.NumField(); k++ {
 			lk := strings.ToLower(t.Field(k).Name)
-			if _, ok := d.(map[string]interface{})[lk]; ok != true {
+			if _, ok := d.(map[string]any)[lk]; ok != true {
 				m = fmt.Sprintf("json: can not find field \"%s\"", lk)
 				Debug(m)
 				return errors.New(m)
 			}
 		}
-		jsonMap = d.(map[string]interface{})
+		jsonMap = d.(map[string]any)
 		break
 	case reflect.Slice:
 		if t.NumField() != reflect.ValueOf(d).Len() {
@@ -164,8 +164,8 @@ func GetStruct(d interface{}, s interface{}) error {
 	return nil
 }
 
-func Rs(id interface{}, method string, params interface{}) interface{} {
-	var req interface{}
+func Rs(id any, method string, params any) any {
+	var req any
 	if id != nil {
 		req = Request{id.(string), JsonRpc, method, params}
 	} else {
@@ -174,12 +174,12 @@ func Rs(id interface{}, method string, params interface{}) interface{} {
 	return req
 }
 
-func JsonRs(id interface{}, method string, params interface{}) []byte {
+func JsonRs(id any, method string, params any) []byte {
 	e, _ := json.Marshal(Rs(id, method, params))
 	return e
 }
 
-func JsonBatchRs(data []interface{}) []byte {
+func JsonBatchRs(data []any) []byte {
 	e, _ := json.Marshal(data)
 	return e
 }

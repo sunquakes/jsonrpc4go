@@ -31,11 +31,11 @@ type Server struct {
 }
 
 type Hooks struct {
-	BeforeFunc func(id interface{}, method string, params interface{}) error
-	AfterFunc  func(id interface{}, method string, result interface{}) error
+	BeforeFunc func(id any, method string, params any) error
+	AfterFunc  func(id any, method string, result any) error
 }
 
-func (svr *Server) Register(s interface{}) error {
+func (svr *Server) Register(s any) error {
 	svc := new(Service)
 	svc.V = reflect.ValueOf(s)
 	svc.T = reflect.TypeOf(s)
@@ -103,16 +103,16 @@ func (svr *Server) Handler(b []byte) []byte {
 	if err != nil {
 		return jsonE(nil, JsonRpc, ParseError)
 	}
-	var res interface{}
+	var res any
 	if reflect.ValueOf(data).Kind() == reflect.Slice {
-		var resList []interface{}
-		for _, v := range data.([]interface{}) {
-			r := svr.SingleHandler(v.(map[string]interface{}))
+		var resList []any
+		for _, v := range data.([]any) {
+			r := svr.SingleHandler(v.(map[string]any))
 			resList = append(resList, r)
 		}
 		res = resList
 	} else if reflect.ValueOf(data).Kind() == reflect.Map {
-		r := svr.SingleHandler(data.(map[string]interface{}))
+		r := svr.SingleHandler(data.(map[string]any))
 		res = r
 	} else {
 		return jsonE(nil, JsonRpc, InvalidRequest)
@@ -122,7 +122,7 @@ func (svr *Server) Handler(b []byte) []byte {
 	return response
 }
 
-func (svr *Server) SingleHandler(jsonMap map[string]interface{}) interface{} {
+func (svr *Server) SingleHandler(jsonMap map[string]any) any {
 	id, jsonRpc, method, paramsData, errCode := ParseSingleRequestBody(jsonMap)
 	if errCode != WithoutError {
 		return E(id, jsonRpc, errCode)

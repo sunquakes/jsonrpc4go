@@ -10,6 +10,11 @@ import (
 )
 
 type Tcp struct {
+	Ip   string
+	Port string
+}
+
+type TcpClient struct {
 	Ip          string
 	Port        string
 	RequestList []*common.SingleRequest
@@ -22,7 +27,9 @@ type TcpOptions struct {
 	PackageMaxLength int64
 }
 
-func NewTcpClient(ip string, port string) (*Tcp, error) {
+func (c *Tcp) NewClient() (Client, error) {
+	ip := c.Ip
+	port := c.Port
 	options := TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
@@ -32,7 +39,7 @@ func NewTcpClient(ip string, port string) (*Tcp, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Tcp{
+	return &TcpClient{
 		ip,
 		port,
 		nil,
@@ -41,7 +48,26 @@ func NewTcpClient(ip string, port string) (*Tcp, error) {
 	}, err
 }
 
-func (p *Tcp) BatchAppend(method string, params interface{}, result interface{}, isNotify bool) *error {
+func NewTcpClient(ip string, port string) (*TcpClient, error) {
+	options := TcpOptions{
+		"\r\n",
+		1024 * 1024 * 2,
+	}
+	var addr = fmt.Sprintf("%s:%s", ip, port)
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return &TcpClient{
+		ip,
+		port,
+		nil,
+		options,
+		conn,
+	}, err
+}
+
+func (p *TcpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
 	singleRequest := &common.SingleRequest{
 		method,
 		params,
@@ -53,14 +79,14 @@ func (p *Tcp) BatchAppend(method string, params interface{}, result interface{},
 	return singleRequest.Error
 }
 
-func (p *Tcp) BatchCall() error {
+func (p *TcpClient) BatchCall() error {
 	var (
 		err error
-		br  []interface{}
+		br  []any
 	)
 	for _, v := range p.RequestList {
 		var (
-			req interface{}
+			req any
 		)
 		if v.IsNotify == true {
 			req = common.Rs(nil, v.Method, v.Params)
@@ -76,11 +102,11 @@ func (p *Tcp) BatchCall() error {
 	return err
 }
 
-func (p *Tcp) SetOptions(tcpOptions interface{}) {
+func (p *TcpClient) SetOptions(tcpOptions any) {
 	p.Options = tcpOptions.(TcpOptions)
 }
 
-func (p *Tcp) Call(method string, params interface{}, result interface{}, isNotify bool) error {
+func (p *TcpClient) Call(method string, params any, result any, isNotify bool) error {
 	var (
 		err error
 		req []byte
@@ -95,7 +121,7 @@ func (p *Tcp) Call(method string, params interface{}, result interface{}, isNoti
 	return err
 }
 
-func (p *Tcp) handleFunc(b []byte, result interface{}) error {
+func (p *TcpClient) handleFunc(b []byte, result any) error {
 	var err error
 	_, err = p.Conn.Write(b)
 	if err != nil {

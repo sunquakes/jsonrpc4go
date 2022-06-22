@@ -11,23 +11,36 @@ import (
 )
 
 type Http struct {
+	Ip   string
+	Port string
+}
+
+type HttpClient struct {
 	Ip          string
 	Port        string
 	RequestList []*common.SingleRequest
 }
 
-func NewHttpClient(ip string, port string) *Http {
-	return &Http{
+func (c *Http) NewClient() (Client, error) {
+	return &HttpClient{
+		c.Ip,
+		c.Port,
+		nil,
+	}, nil
+}
+
+func NewHttpClient(ip string, port string) *HttpClient {
+	return &HttpClient{
 		ip,
 		port,
 		nil,
 	}
 }
 
-func (p *Http) SetOptions(httpOptions interface{}) {
+func (p *HttpClient) SetOptions(httpOptions any) {
 }
 
-func (p *Http) BatchAppend(method string, params interface{}, result interface{}, isNotify bool) *error {
+func (p *HttpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
 	singleRequest := &common.SingleRequest{
 		method,
 		params,
@@ -39,14 +52,14 @@ func (p *Http) BatchAppend(method string, params interface{}, result interface{}
 	return singleRequest.Error
 }
 
-func (p *Http) BatchCall() error {
+func (p *HttpClient) BatchCall() error {
 	var (
 		err error
-		br  []interface{}
+		br  []any
 	)
 	for _, v := range p.RequestList {
 		var (
-			req interface{}
+			req any
 		)
 		if v.IsNotify == true {
 			req = common.Rs(nil, v.Method, v.Params)
@@ -61,7 +74,7 @@ func (p *Http) BatchCall() error {
 	return err
 }
 
-func (p *Http) Call(method string, params interface{}, result interface{}, isNotify bool) error {
+func (p *HttpClient) Call(method string, params any, result any, isNotify bool) error {
 	var (
 		err error
 		req []byte
@@ -75,7 +88,7 @@ func (p *Http) Call(method string, params interface{}, result interface{}, isNot
 	return err
 }
 
-func (p *Http) handleFunc(b []byte, result interface{}) error {
+func (p *HttpClient) handleFunc(b []byte, result any) error {
 	var url = fmt.Sprintf("http://%s:%s", p.Ip, p.Port)
 	resp, err := http.Post(url, "application/json", bytes.NewReader(b))
 	if err != nil {

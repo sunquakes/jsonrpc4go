@@ -10,12 +10,12 @@ import (
 type Error common.Error
 
 type ServerInterface interface {
-	SetBeforeFunc(func(id interface{}, method string, params interface{}) error)
-	SetAfterFunc(func(id interface{}, method string, result interface{}) error)
-	SetOptions(interface{})
+	SetBeforeFunc(func(id any, method string, params any) error)
+	SetAfterFunc(func(id any, method string, result any) error)
+	SetOptions(any)
 	SetRateLimit(rate.Limit, int)
 	Start()
-	Register(s interface{})
+	Register(s any)
 	GetEvent() <-chan int
 }
 
