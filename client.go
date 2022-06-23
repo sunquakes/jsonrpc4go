@@ -6,12 +6,14 @@ import (
 )
 
 func NewClient(protocol string, ip string, port string) (client.Client, error) {
+	var p client.Protocol
 	switch protocol {
 	case "http":
-		return client.NewClinet(&client.Http{ip, port})
+		p = &client.Http{ip, port}
 	case "tcp":
-		return client.NewClinet(&client.Tcp{ip, port})
+		p = &client.Tcp{ip, port}
 	default:
 		return nil, errors.New("The protocol can not be supported")
 	}
+	return client.NewClient(p)
 }

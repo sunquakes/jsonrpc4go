@@ -11,6 +11,11 @@ import (
 )
 
 type Http struct {
+	Ip   string
+	Port string
+}
+
+type HttpServer struct {
 	Ip      string
 	Port    string
 	Server  common.Server
@@ -21,11 +26,11 @@ type Http struct {
 type HttpOptions struct {
 }
 
-func NewHttpServer(ip string, port string) *Http {
+func (p *Http) NewServer() Server {
 	options := HttpOptions{}
-	return &Http{
-		ip,
-		port,
+	return &HttpServer{
+		p.Ip,
+		p.Port,
 		common.Server{
 			sync.Map{},
 			common.Hooks{},
@@ -36,46 +41,46 @@ func NewHttpServer(ip string, port string) *Http {
 	}
 }
 
-func (p *Http) Start() {
+func (s *HttpServer) Start() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", p.handleFunc)
-	var url = fmt.Sprintf("%s:%s", p.Ip, p.Port)
-	log.Printf("Listening http://%s:%s", p.Ip, p.Port)
-	p.Event <- 0
+	mux.HandleFunc("/", s.handleFunc)
+	var url = fmt.Sprintf("%s:%s", s.Ip, s.Port)
+	log.Printf("Listening http://%s:%s", s.Ip, s.Port)
+	s.Event <- 0
 	err := http.ListenAndServe(url, mux)
 	if err != nil {
 		log.Panic(err.Error())
 	}
 }
 
-func (p *Http) Register(s any) {
-	err := p.Server.Register(s)
+func (s *HttpServer) Register(m any) {
+	err := s.Server.Register(m)
 	if err != nil {
 		log.Panic(err.Error())
 	}
 }
 
-func (p *Http) SetOptions(httpOptions any) {
-	p.Options = httpOptions.(HttpOptions)
+func (s *HttpServer) SetOptions(httpOptions any) {
+	s.Options = httpOptions.(HttpOptions)
 }
 
-func (p *Http) SetRateLimit(r rate.Limit, b int) {
-	p.Server.RateLimiter = rate.NewLimiter(r, b)
+func (s *HttpServer) SetRateLimit(r rate.Limit, b int) {
+	s.Server.RateLimiter = rate.NewLimiter(r, b)
 }
 
-func (p *Http) SetBeforeFunc(beforeFunc func(id any, method string, params any) error) {
-	p.Server.Hooks.BeforeFunc = beforeFunc
+func (s *HttpServer) SetBeforeFunc(beforeFunc func(id any, method string, params any) error) {
+	s.Server.Hooks.BeforeFunc = beforeFunc
 }
 
-func (p *Http) SetAfterFunc(afterFunc func(id any, method string, result any) error) {
-	p.Server.Hooks.AfterFunc = afterFunc
+func (s *HttpServer) SetAfterFunc(afterFunc func(id any, method string, result any) error) {
+	s.Server.Hooks.AfterFunc = afterFunc
 }
 
-func (p *Http) GetEvent() <-chan int {
-	return p.Event
+func (s *HttpServer) GetEvent() <-chan int {
+	return s.Event
 }
 
-func (p *Http) handleFunc(w http.ResponseWriter, r *http.Request) {
+func (s *HttpServer) handleFunc(w http.ResponseWriter, r *http.Request) {
 	var (
 		err  error
 		data []byte
@@ -89,7 +94,7 @@ func (p *Http) handleFunc(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	res := p.Server.Handler(data)
+	res := s.Server.Handler(data)
 	_, err = w.Write(res)
 	if err != nil {
 		log.Panic(err.Error())

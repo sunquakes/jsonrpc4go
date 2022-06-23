@@ -37,10 +37,10 @@ func NewHttpClient(ip string, port string) *HttpClient {
 	}
 }
 
-func (p *HttpClient) SetOptions(httpOptions any) {
+func (c *HttpClient) SetOptions(httpOptions any) {
 }
 
-func (p *HttpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
+func (c *HttpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
 	singleRequest := &common.SingleRequest{
 		method,
 		params,
@@ -48,16 +48,16 @@ func (p *HttpClient) BatchAppend(method string, params any, result any, isNotify
 		new(error),
 		isNotify,
 	}
-	p.RequestList = append(p.RequestList, singleRequest)
+	c.RequestList = append(c.RequestList, singleRequest)
 	return singleRequest.Error
 }
 
-func (p *HttpClient) BatchCall() error {
+func (c *HttpClient) BatchCall() error {
 	var (
 		err error
 		br  []any
 	)
-	for _, v := range p.RequestList {
+	for _, v := range c.RequestList {
 		var (
 			req any
 		)
@@ -69,12 +69,12 @@ func (p *HttpClient) BatchCall() error {
 		br = append(br, req)
 	}
 	bReq := common.JsonBatchRs(br)
-	err = p.handleFunc(bReq, p.RequestList)
-	p.RequestList = make([]*common.SingleRequest, 0)
+	err = c.handleFunc(bReq, c.RequestList)
+	c.RequestList = make([]*common.SingleRequest, 0)
 	return err
 }
 
-func (p *HttpClient) Call(method string, params any, result any, isNotify bool) error {
+func (c *HttpClient) Call(method string, params any, result any, isNotify bool) error {
 	var (
 		err error
 		req []byte
@@ -84,12 +84,12 @@ func (p *HttpClient) Call(method string, params any, result any, isNotify bool) 
 	} else {
 		req = common.JsonRs(strconv.FormatInt(time.Now().Unix(), 10), method, params)
 	}
-	err = p.handleFunc(req, result)
+	err = c.handleFunc(req, result)
 	return err
 }
 
-func (p *HttpClient) handleFunc(b []byte, result any) error {
-	var url = fmt.Sprintf("http://%s:%s", p.Ip, p.Port)
+func (c *HttpClient) handleFunc(b []byte, result any) error {
+	var url = fmt.Sprintf("http://%s:%s", c.Ip, c.Port)
 	resp, err := http.Post(url, "application/json", bytes.NewReader(b))
 	if err != nil {
 		return err

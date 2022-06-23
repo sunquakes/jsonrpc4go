@@ -27,9 +27,9 @@ type TcpOptions struct {
 	PackageMaxLength int64
 }
 
-func (c *Tcp) NewClient() (Client, error) {
-	ip := c.Ip
-	port := c.Port
+func (p *Tcp) NewClient() (Client, error) {
+	ip := p.Ip
+	port := p.Port
 	options := TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
@@ -67,7 +67,7 @@ func NewTcpClient(ip string, port string) (*TcpClient, error) {
 	}, err
 }
 
-func (p *TcpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
+func (c *TcpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
 	singleRequest := &common.SingleRequest{
 		method,
 		params,
@@ -75,16 +75,16 @@ func (p *TcpClient) BatchAppend(method string, params any, result any, isNotify 
 		new(error),
 		isNotify,
 	}
-	p.RequestList = append(p.RequestList, singleRequest)
+	c.RequestList = append(c.RequestList, singleRequest)
 	return singleRequest.Error
 }
 
-func (p *TcpClient) BatchCall() error {
+func (c *TcpClient) BatchCall() error {
 	var (
 		err error
 		br  []any
 	)
-	for _, v := range p.RequestList {
+	for _, v := range c.RequestList {
 		var (
 			req any
 		)
@@ -96,17 +96,17 @@ func (p *TcpClient) BatchCall() error {
 		br = append(br, req)
 	}
 	bReq := common.JsonBatchRs(br)
-	bReq = append(bReq, []byte(p.Options.PackageEof)...)
-	err = p.handleFunc(bReq, p.RequestList)
-	p.RequestList = make([]*common.SingleRequest, 0)
+	bReq = append(bReq, []byte(c.Options.PackageEof)...)
+	err = c.handleFunc(bReq, c.RequestList)
+	c.RequestList = make([]*common.SingleRequest, 0)
 	return err
 }
 
-func (p *TcpClient) SetOptions(tcpOptions any) {
-	p.Options = tcpOptions.(TcpOptions)
+func (c *TcpClient) SetOptions(tcpOptions any) {
+	c.Options = tcpOptions.(TcpOptions)
 }
 
-func (p *TcpClient) Call(method string, params any, result any, isNotify bool) error {
+func (c *TcpClient) Call(method string, params any, result any, isNotify bool) error {
 	var (
 		err error
 		req []byte
@@ -116,27 +116,27 @@ func (p *TcpClient) Call(method string, params any, result any, isNotify bool) e
 	} else {
 		req = common.JsonRs(strconv.FormatInt(time.Now().Unix(), 10), method, params)
 	}
-	req = append(req, []byte(p.Options.PackageEof)...)
-	err = p.handleFunc(req, result)
+	req = append(req, []byte(c.Options.PackageEof)...)
+	err = c.handleFunc(req, result)
 	return err
 }
 
-func (p *TcpClient) handleFunc(b []byte, result any) error {
+func (c *TcpClient) handleFunc(b []byte, result any) error {
 	var err error
-	_, err = p.Conn.Write(b)
+	_, err = c.Conn.Write(b)
 	if err != nil {
 		return err
 	}
 
-	eofb := []byte(p.Options.PackageEof)
+	eofb := []byte(c.Options.PackageEof)
 	eofl := len(eofb)
 	var (
 		data []byte
 	)
 	l := 0
 	for {
-		var buf = make([]byte, p.Options.PackageMaxLength)
-		n, err := p.Conn.Read(buf)
+		var buf = make([]byte, c.Options.PackageMaxLength)
+		n, err := c.Conn.Read(buf)
 		if err != nil {
 			if n == 0 {
 				return err

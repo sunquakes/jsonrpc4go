@@ -12,6 +12,11 @@ import (
 )
 
 type Tcp struct {
+	Ip   string
+	Port string
+}
+
+type TcpServer struct {
 	Ip      string
 	Port    string
 	Server  common.Server
@@ -24,14 +29,14 @@ type TcpOptions struct {
 	PackageMaxLength int64
 }
 
-func NewTcpServer(ip string, port string) *Tcp {
+func (p *Tcp) NewServer() Server {
 	options := TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
 	}
-	return &Tcp{
-		ip,
-		port,
+	return &TcpServer{
+		p.Ip,
+		p.Port,
 		common.Server{
 			sync.Map{},
 			common.Hooks{},
@@ -42,52 +47,52 @@ func NewTcpServer(ip string, port string) *Tcp {
 	}
 }
 
-func (p *Tcp) Start() {
-	var addr = fmt.Sprintf("%s:%s", p.Ip, p.Port)
+func (s *TcpServer) Start() {
+	var addr = fmt.Sprintf("%s:%s", s.Ip, s.Port)
 	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		log.Panic(err.Error())
 	}
 	listener, _ := net.ListenTCP("tcp", tcpAddr)
-	log.Printf("Listening tcp://%s:%s", p.Ip, p.Port)
+	log.Printf("Listening tcp://%s:%s", s.Ip, s.Port)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	p.Event <- 0
+	s.Event <- 0
 	for {
 		conn, err := listener.AcceptTCP()
 		if err != nil {
 			log.Panic(err.Error())
 			continue
 		}
-		go p.handleFunc(ctx, conn)
+		go s.handleFunc(ctx, conn)
 	}
 }
 
-func (p *Tcp) Register(s any) {
-	p.Server.Register(s)
+func (s *TcpServer) Register(m any) {
+	s.Server.Register(m)
 }
 
-func (p *Tcp) SetOptions(tcpOptions any) {
-	p.Options = tcpOptions.(TcpOptions)
+func (s *TcpServer) SetOptions(tcpOptions any) {
+	s.Options = tcpOptions.(TcpOptions)
 }
 
-func (p *Tcp) SetRateLimit(r rate.Limit, b int) {
-	p.Server.RateLimiter = rate.NewLimiter(r, b)
+func (s *TcpServer) SetRateLimit(r rate.Limit, b int) {
+	s.Server.RateLimiter = rate.NewLimiter(r, b)
 }
 
-func (p *Tcp) SetBeforeFunc(beforeFunc func(id any, method string, params any) error) {
-	p.Server.Hooks.BeforeFunc = beforeFunc
+func (s *TcpServer) SetBeforeFunc(beforeFunc func(id any, method string, params any) error) {
+	s.Server.Hooks.BeforeFunc = beforeFunc
 }
 
-func (p *Tcp) SetAfterFunc(afterFunc func(id any, method string, result any) error) {
-	p.Server.Hooks.AfterFunc = afterFunc
+func (s *TcpServer) SetAfterFunc(afterFunc func(id any, method string, result any) error) {
+	s.Server.Hooks.AfterFunc = afterFunc
 }
 
-func (p *Tcp) GetEvent() <-chan int {
-	return p.Event
+func (s *TcpServer) GetEvent() <-chan int {
+	return s.Event
 }
 
-func (p *Tcp) handleFunc(ctx context.Context, conn net.Conn) {
+func (s *TcpServer) handleFunc(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 	select {
 	case <-ctx.Done():
@@ -95,7 +100,7 @@ func (p *Tcp) handleFunc(ctx context.Context, conn net.Conn) {
 	default:
 		//	do nothing
 	}
-	eofb := []byte(p.Options.PackageEof)
+	eofb := []byte(s.Options.PackageEof)
 	eofl := len(eofb)
 	for {
 		var (
@@ -103,7 +108,7 @@ func (p *Tcp) handleFunc(ctx context.Context, conn net.Conn) {
 		)
 		l := 0
 		for {
-			var buf = make([]byte, p.Options.PackageMaxLength)
+			var buf = make([]byte, s.Options.PackageMaxLength)
 			n, err := conn.Read(buf)
 			if err != nil {
 				if n == 0 {
@@ -117,7 +122,7 @@ func (p *Tcp) handleFunc(ctx context.Context, conn net.Conn) {
 				break
 			}
 		}
-		res := p.Server.Handler(data[:l-eofl])
+		res := s.Server.Handler(data[:l-eofl])
 		res = append(res, eofb...)
 		conn.Write(res)
 	}

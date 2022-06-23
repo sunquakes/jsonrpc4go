@@ -11,6 +11,6 @@ type Client interface {
 	BatchCall() error
 }
 
-func NewClinet[T Protocol](p T) (Client, error) {
+func NewClient[T Protocol](p T) (Client, error) {
 	return p.NewClient()
 }
