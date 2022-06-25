@@ -1,9 +1,10 @@
+English | [🇨🇳中文](README_ZH.md)
 # jsonrpc4go
-## Installing
+## 🧰 Installing
 ```
 go get -u github.com/sunquakes/jsonrpc4go
 ```
-## Getting started
+## 📖 Getting started
 - Server
 ```go
 package main
@@ -63,11 +64,11 @@ func main() {
 	fmt.Println(*result) // 7
 }
 ```
-## Test
+## ⚔️ Test
 ```
 go test -v ./test/...
 ```
-## More features
+## 🚀 More features
 - TCP protocol
 ```go
 s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3232") // the protocol is tcp
@@ -125,3 +126,5 @@ fmt.Println(*result3) // 0
 fmt.Println(*err4) // nil
 fmt.Println(*result4) // 5
 ```
+## 📄 License
+Source code in `jsonrpc4go` is available under the [Apache-2.0 license](/LICENSE).
