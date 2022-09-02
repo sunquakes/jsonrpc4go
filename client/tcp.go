@@ -2,9 +2,7 @@ package client
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
-	"net"
 	"strconv"
 	"time"
 )
@@ -19,7 +17,7 @@ type TcpClient struct {
 	Port        string
 	RequestList []*common.SingleRequest
 	Options     TcpOptions
-	Conn        net.Conn
+	Pool        *Pool
 }
 
 type TcpOptions struct {
@@ -34,18 +32,14 @@ func (p *Tcp) NewClient() (Client, error) {
 		"\r\n",
 		1024 * 1024 * 2,
 	}
-	var addr = fmt.Sprintf("%s:%s", ip, port)
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
+	pool := NewPool(ip, port, Option{1, 1, 1})
 	return &TcpClient{
 		ip,
 		port,
 		nil,
 		options,
-		conn,
-	}, err
+		pool,
+	}, nil
 }
 
 func NewTcpClient(ip string, port string) (*TcpClient, error) {
@@ -53,18 +47,14 @@ func NewTcpClient(ip string, port string) (*TcpClient, error) {
 		"\r\n",
 		1024 * 1024 * 2,
 	}
-	var addr = fmt.Sprintf("%s:%s", ip, port)
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
+	pool := NewPool(ip, port, Option{1, 1, 1})
 	return &TcpClient{
 		ip,
 		port,
 		nil,
 		options,
-		conn,
-	}, err
+		pool,
+	}, nil
 }
 
 func (c *TcpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
@@ -122,8 +112,10 @@ func (c *TcpClient) Call(method string, params any, result any, isNotify bool) e
 }
 
 func (c *TcpClient) handleFunc(b []byte, result any) error {
+	conn := c.Pool.Borrow()
+	defer c.Pool.Release(conn)
 	var err error
-	_, err = c.Conn.Write(b)
+	_, err = conn.Write(b)
 	if err != nil {
 		return err
 	}
@@ -136,7 +128,7 @@ func (c *TcpClient) handleFunc(b []byte, result any) error {
 	l := 0
 	for {
 		var buf = make([]byte, c.Options.PackageMaxLength)
-		n, err := c.Conn.Read(buf)
+		n, err := conn.Read(buf)
 		if err != nil {
 			if n == 0 {
 				return err
