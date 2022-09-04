@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-type Option struct {
+type PoolOptions struct {
 	MinIdle   int
 	MaxActive int
 	MaxIdle   int
@@ -15,13 +15,13 @@ type Option struct {
 type Pool struct {
 	Address     string
 	Lock        sync.Mutex
-	Option      Option
+	Options     PoolOptions
 	ActiveTotal int
 	Conns       chan net.Conn
 }
 
-func NewPool(ip string, port string, option Option) *Pool {
-	ch := make(chan net.Conn, 10)
+func NewPool(ip string, port string, option PoolOptions) *Pool {
+	ch := make(chan net.Conn, option.MaxActive)
 	var addr = fmt.Sprintf("%s:%s", ip, port)
 	pool := &Pool{
 		addr,
@@ -42,25 +42,28 @@ func NewPool(ip string, port string, option Option) *Pool {
 func (p *Pool) Borrow() net.Conn {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
-	if p.ActiveTotal >= p.Option.MaxActive-p.Option.MinIdle {
+	if p.ActiveTotal >= p.Options.MaxActive {
 		return <-p.Conns
 	}
+	p.NewConn()
 	return <-p.Conns
 }
 
-func (p Pool) Release(conn net.Conn) {
+func (p *Pool) Release(conn net.Conn) {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
 	p.Conns <- conn
 }
 
-func (p Pool) NewConn() error {
-	p.Lock.Lock()
-	defer p.Lock.Unlock()
+func (p *Pool) NewConn() error {
 	conn, err := net.Dial("tcp", p.Address)
 	if err == nil {
 		p.ActiveTotal++
 		p.Conns <- conn
 	}
 	return err
+}
+
+func (p *Pool) SetOptions(options PoolOptions) {
+	p.Options = options
 }

@@ -23,6 +23,7 @@ type TcpClient struct {
 type TcpOptions struct {
 	PackageEof       string
 	PackageMaxLength int64
+	PoolOptions      PoolOptions
 }
 
 func (p *Tcp) NewClient() (Client, error) {
@@ -31,8 +32,9 @@ func (p *Tcp) NewClient() (Client, error) {
 	options := TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
+		PoolOptions{8, 8, 8},
 	}
-	pool := NewPool(ip, port, Option{1, 1, 1})
+	pool := NewPool(ip, port, options.PoolOptions)
 	return &TcpClient{
 		ip,
 		port,
@@ -46,8 +48,9 @@ func NewTcpClient(ip string, port string) (*TcpClient, error) {
 	options := TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
+		PoolOptions{8, 8, 8},
 	}
-	pool := NewPool(ip, port, Option{1, 1, 1})
+	pool := NewPool(ip, port, options.PoolOptions)
 	return &TcpClient{
 		ip,
 		port,
