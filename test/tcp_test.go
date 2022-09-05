@@ -92,7 +92,7 @@ func TestSetOption(t *testing.T) {
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
 	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3605")
-	s.SetOptions(client.TcpOptions{"aaaaaa", 2 * 1024 * 1024, client.PoolOptions{8, 8, 8}})
+	s.SetOptions(client.TcpOptions{"aaaaaa", 2 * 1024 * 1024})
 	params := Params{1, 2}
 	result := new(Result)
 	s.Call("IntRpc.Add", &params, result, false)
@@ -211,7 +211,7 @@ func TestLongPackageTcpCall(t *testing.T) {
 		go func(group *sync.WaitGroup) {
 			defer group.Done()
 			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3609")
-			c.SetOptions(client.TcpOptions{"\r\n", 2 * 1024 * 1024, client.PoolOptions{8, 8, 8}})
+			c.SetOptions(client.TcpOptions{"\r\n", 2 * 1024 * 1024})
 			params := LongParams{LongString1, LongString2}
 			result := new(LongResult)
 			for j := 0; j < 100; j++ {

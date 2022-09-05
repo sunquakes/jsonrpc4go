@@ -9,7 +9,6 @@ import (
 type PoolOptions struct {
 	MinIdle   int
 	MaxActive int
-	MaxIdle   int
 }
 
 type Pool struct {
@@ -31,7 +30,7 @@ func NewPool(ip string, port string, option PoolOptions) *Pool {
 		ch,
 	}
 	for i := 0; i < option.MinIdle; i++ {
-		err := pool.NewConn()
+		err := pool.Create()
 		if err != nil {
 			fmt.Errorf("Can not connect %s", addr)
 		}
@@ -45,7 +44,7 @@ func (p *Pool) Borrow() net.Conn {
 	if p.ActiveTotal >= p.Options.MaxActive {
 		return <-p.Conns
 	}
-	p.NewConn()
+	p.Create()
 	return <-p.Conns
 }
 
@@ -55,13 +54,17 @@ func (p *Pool) Release(conn net.Conn) {
 	p.Conns <- conn
 }
 
-func (p *Pool) NewConn() error {
+func (p *Pool) Create() error {
 	conn, err := net.Dial("tcp", p.Address)
 	if err == nil {
 		p.ActiveTotal++
 		p.Conns <- conn
 	}
 	return err
+}
+
+func (p *Pool) Remove() {
+	p.ActiveTotal--
 }
 
 func (p *Pool) SetOptions(options PoolOptions) {

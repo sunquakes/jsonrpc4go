@@ -23,41 +23,27 @@ type TcpClient struct {
 type TcpOptions struct {
 	PackageEof       string
 	PackageMaxLength int64
-	PoolOptions      PoolOptions
 }
 
-func (p *Tcp) NewClient() (Client, error) {
+func (p *Tcp) NewClient() Client {
 	ip := p.Ip
 	port := p.Port
-	options := TcpOptions{
-		"\r\n",
-		1024 * 1024 * 2,
-		PoolOptions{8, 8, 8},
-	}
-	pool := NewPool(ip, port, options.PoolOptions)
-	return &TcpClient{
-		ip,
-		port,
-		nil,
-		options,
-		pool,
-	}, nil
+	return NewTcpClient(ip, port)
 }
 
-func NewTcpClient(ip string, port string) (*TcpClient, error) {
+func NewTcpClient(ip string, port string) *TcpClient {
 	options := TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
-		PoolOptions{8, 8, 8},
 	}
-	pool := NewPool(ip, port, options.PoolOptions)
+	pool := NewPool(ip, port, PoolOptions{5, 5})
 	return &TcpClient{
 		ip,
 		port,
 		nil,
 		options,
 		pool,
-	}, nil
+	}
 }
 
 func (c *TcpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
@@ -97,6 +83,10 @@ func (c *TcpClient) BatchCall() error {
 
 func (c *TcpClient) SetOptions(tcpOptions any) {
 	c.Options = tcpOptions.(TcpOptions)
+}
+
+func (c *TcpClient) SetPoolOptions(poolOption any) {
+	c.Pool.SetOptions(poolOption.(PoolOptions))
 }
 
 func (c *TcpClient) Call(method string, params any, result any, isNotify bool) error {

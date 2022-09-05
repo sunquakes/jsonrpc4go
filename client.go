@@ -15,5 +15,5 @@ func NewClient(protocol string, ip string, port string) (client.Client, error) {
 	default:
 		return nil, errors.New("The protocol can not be supported")
 	}
-	return client.NewClient(p)
+	return client.NewClient(p), nil
 }

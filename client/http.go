@@ -21,12 +21,8 @@ type HttpClient struct {
 	RequestList []*common.SingleRequest
 }
 
-func (c *Http) NewClient() (Client, error) {
-	return &HttpClient{
-		c.Ip,
-		c.Port,
-		nil,
-	}, nil
+func (c *Http) NewClient() Client {
+	return NewHttpClient(c.Ip, c.Port)
 }
 
 func NewHttpClient(ip string, port string) *HttpClient {
@@ -38,6 +34,9 @@ func NewHttpClient(ip string, port string) *HttpClient {
 }
 
 func (c *HttpClient) SetOptions(httpOptions any) {
+}
+
+func (c *HttpClient) SetPoolOptions(httpOptions any) {
 }
 
 func (c *HttpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
