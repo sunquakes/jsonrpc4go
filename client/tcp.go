@@ -2,7 +2,9 @@ package client
 
 import (
 	"bytes"
+	"errors"
 	"github.com/sunquakes/jsonrpc4go/common"
+	"net"
 	"strconv"
 	"time"
 )
@@ -105,13 +107,22 @@ func (c *TcpClient) Call(method string, params any, result any, isNotify bool) e
 }
 
 func (c *TcpClient) handleFunc(b []byte, result any) error {
-	conn := c.Pool.Borrow()
-	defer c.Pool.Release(conn)
-	var err error
+	var (
+		err  error
+		conn net.Conn
+	)
+
+	conn = c.Pool.Borrow()
 	_, err = conn.Write(b)
 	if err != nil {
-		return err
+		conn = c.Pool.BorrowAfterRemove(conn)
+		_, err = conn.Write(b)
+		if conn == nil {
+			return errors.New("Unable to connect to the server.")
+		}
 	}
+
+	defer c.Pool.Release(conn)
 
 	eofb := []byte(c.Options.PackageEof)
 	eofl := len(eofb)

@@ -229,6 +229,7 @@ func TestLongPackageTcpCall(t *testing.T) {
 					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
 				}
 			}
+
 		}(&wg)
 	}
 	wg.Wait()

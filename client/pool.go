@@ -55,7 +55,7 @@ func (p *Pool) Release(conn net.Conn) {
 }
 
 func (p *Pool) Create() error {
-	conn, err := net.Dial("tcp", p.Address)
+	conn, err := p.Connect()
 	if err == nil {
 		p.ActiveTotal++
 		p.Conns <- conn
@@ -63,7 +63,18 @@ func (p *Pool) Create() error {
 	return err
 }
 
-func (p *Pool) Remove() {
+func (p *Pool) Connect() (net.Conn, error) {
+	return net.Dial("tcp", p.Address)
+}
+
+func (p *Pool) BorrowAfterRemove(conn net.Conn) net.Conn {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
+	conn, _ = p.Connect()
+	return conn
+}
+
+func (p *Pool) Remove(conn net.Conn) {
 	p.ActiveTotal--
 }
 
