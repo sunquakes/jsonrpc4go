@@ -112,10 +112,16 @@ func (c *TcpClient) handleFunc(b []byte, result any) error {
 		conn net.Conn
 	)
 
-	conn = c.Pool.Borrow()
+	conn, err = c.Pool.Borrow()
+	if err != nil {
+		return err
+	}
 	_, err = conn.Write(b)
 	if err != nil {
-		conn = c.Pool.BorrowAfterRemove(conn)
+		conn, err = c.Pool.BorrowAfterRemove(conn)
+		if err != nil {
+			return err
+		}
 		_, err = conn.Write(b)
 		if conn == nil {
 			return errors.New("Unable to connect to the server.")

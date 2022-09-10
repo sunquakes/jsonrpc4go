@@ -261,3 +261,13 @@ func TestCoTcpCall(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestFailConnect(t *testing.T) {
+	params := Params{1, 2}
+	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3611")
+	result := new(Result)
+	err := s.Call("IntRpc.Add", &params, result, false)
+	if err.Error() != "Unable to connect to the server." {
+		t.Errorf("Error expected be %s, but %s got", "Unable to connect to the server.", err.Error())
+	}
+}

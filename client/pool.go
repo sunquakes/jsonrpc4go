@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -38,14 +39,17 @@ func NewPool(ip string, port string, option PoolOptions) *Pool {
 	return pool
 }
 
-func (p *Pool) Borrow() net.Conn {
+func (p *Pool) Borrow() (net.Conn, error) {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
+	if p.ActiveTotal <= 0 {
+		return nil, errors.New("Unable to connect to the server.")
+	}
 	if p.ActiveTotal >= p.Options.MaxActive {
-		return <-p.Conns
+		return <-p.Conns, nil
 	}
 	p.Create()
-	return <-p.Conns
+	return <-p.Conns, nil
 }
 
 func (p *Pool) Release(conn net.Conn) {
@@ -67,11 +71,10 @@ func (p *Pool) Connect() (net.Conn, error) {
 	return net.Dial("tcp", p.Address)
 }
 
-func (p *Pool) BorrowAfterRemove(conn net.Conn) net.Conn {
+func (p *Pool) BorrowAfterRemove(conn net.Conn) (net.Conn, error) {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
-	conn, _ = p.Connect()
-	return conn
+	return p.Connect()
 }
 
 func (p *Pool) Remove(conn net.Conn) {
