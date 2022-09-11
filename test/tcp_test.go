@@ -267,7 +267,7 @@ func TestFailConnect(t *testing.T) {
 	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3611")
 	result := new(Result)
 	err := s.Call("IntRpc.Add", &params, result, false)
-	if err.Error() != "Unable to connect to the server." {
-		t.Errorf("Error expected be %s, but %s got", "Unable to connect to the server.", err.Error())
+	if err.Error() != "dial tcp 127.0.0.1:3611: connect: connection refused" {
+		t.Errorf("Error expected be %s, but %s got", "dial tcp 127.0.0.1:3611: connect: connection refused", err.Error())
 	}
 }
