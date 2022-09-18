@@ -267,7 +267,17 @@ func TestFailConnect(t *testing.T) {
 	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3611")
 	result := new(Result)
 	err := s.Call("IntRpc.Add", &params, result, false)
-	if err.Error() != "dial tcp 127.0.0.1:3611: connect: connection refused" {
-		t.Errorf("Error expected be %s, but %s got", "dial tcp 127.0.0.1:3611: connect: connection refused", err.Error())
+	if err == nil {
+		t.Errorf("Error expected be not nil, but nil got")
+	}
+	go func() {
+		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3611")
+		s.Register(new(IntRpc))
+		s.Start()
+	}()
+	time.Sleep(time.Duration(2) * time.Second)
+	err = s.Call("IntRpc.Add", &params, result, false)
+	if err != nil {
+		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
 	}
 }

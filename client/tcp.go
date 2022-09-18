@@ -118,10 +118,12 @@ func (c *TcpClient) handleFunc(b []byte, result any) error {
 	if err != nil {
 		conn, err = c.Pool.BorrowAfterRemove(conn)
 		if err != nil {
+			c.Pool.Remove(conn)
 			return err
 		}
 		_, err = conn.Write(b)
 		if err != nil {
+			c.Pool.Remove(conn)
 			return err
 		}
 	}
