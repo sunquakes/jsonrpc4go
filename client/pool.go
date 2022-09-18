@@ -74,11 +74,20 @@ func (p *Pool) Connect() (net.Conn, error) {
 func (p *Pool) BorrowAfterRemove(conn net.Conn) (net.Conn, error) {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
-	return p.Connect()
+	if conn != nil {
+		p.ActiveTotal--
+	}
+	conn, err := p.Connect()
+	if err == nil {
+		p.ActiveTotal++
+	}
+	return conn, err
 }
 
 func (p *Pool) Remove(conn net.Conn) {
-	p.ActiveTotal--
+	if conn != nil {
+		p.ActiveTotal--
+	}
 }
 
 func (p *Pool) SetOptions(options PoolOptions) {

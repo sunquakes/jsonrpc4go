@@ -263,12 +263,15 @@ func TestCoTcpCall(t *testing.T) {
 }
 
 func TestFailConnect(t *testing.T) {
+	var err error
 	params := Params{1, 2}
 	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3611")
 	result := new(Result)
-	err := s.Call("IntRpc.Add", &params, result, false)
-	if err == nil {
-		t.Errorf("Error expected be not nil, but nil got")
+	for i := 0; i < 20; i++ {
+		err = s.Call("IntRpc.Add", &params, result, false)
+		if err == nil {
+			t.Errorf("Error expected be not nil, but nil got")
+		}
 	}
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3611")
@@ -276,8 +279,10 @@ func TestFailConnect(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	err = s.Call("IntRpc.Add", &params, result, false)
-	if err != nil {
-		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
+	for i := 0; i < 20; i++ {
+		err = s.Call("IntRpc.Add", &params, result, false)
+		if err != nil {
+			t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
+		}
 	}
 }
