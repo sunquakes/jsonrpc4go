@@ -19,7 +19,7 @@ func TestTcpCall(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3601")
+	c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3601")
 	params := Params{1, 2}
 	result := new(Result)
 	c.Call("IntRpc.Add", &params, result, false)
@@ -35,7 +35,7 @@ func TestTcpCallMethod(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3602")
+	c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3602")
 	params := Params{1, 2}
 	result := new(Result)
 	c.Call("int_rpc/Add", &params, result, false)
@@ -51,7 +51,7 @@ func TestTcpNotifyCall(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3603")
+	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3603")
 	params := Params{2, 3}
 	result := new(Result)
 	s.Call("IntRpc.Add", &params, result, true)
@@ -67,7 +67,7 @@ func TestTcpBatchCall(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3604")
+	c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3604")
 
 	result1 := new(Result)
 	err1 := c.BatchAppend("IntRpc/Add1", Params{1, 6}, result1, false)
@@ -91,7 +91,7 @@ func TestSetOption(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3605")
+	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3605")
 	s.SetOptions(client.TcpOptions{"aaaaaa", 2 * 1024 * 1024})
 	params := Params{1, 2}
 	result := new(Result)
@@ -129,7 +129,7 @@ func TestSetHooks(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3606")
+	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3606")
 	result := new(Result)
 	s.Call("IntRpc.Add", &params, result, false)
 	if *result != 3 {
@@ -148,7 +148,7 @@ func TestSetHooksCustomError(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3607")
+	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3607")
 	result := new(Result)
 	err := s.Call("IntRpc.Add", &params, result, false)
 	if err.Error() != "Custom Error" {
@@ -165,7 +165,7 @@ func TestRateLimit(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(5) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3608")
+	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3608")
 	result := new(Result)
 	err := s.Call("IntRpc.Add", &params, result, false)
 	if err != nil {
@@ -210,7 +210,7 @@ func TestLongPackageTcpCall(t *testing.T) {
 		wg.Add(1)
 		go func(group *sync.WaitGroup) {
 			defer group.Done()
-			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3609")
+			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3609")
 			c.SetOptions(client.TcpOptions{"\r\n", 2 * 1024 * 1024})
 			params := LongParams{LongString1, LongString2}
 			result := new(LongResult)
@@ -248,7 +248,7 @@ func TestCoTcpCall(t *testing.T) {
 		wg.Add(1)
 		go func(group *sync.WaitGroup) {
 			defer group.Done()
-			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3610")
+			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3610")
 			for j := 0; j < 100; j++ {
 				params := Params{i, j}
 				result := new(Result)
@@ -265,7 +265,7 @@ func TestCoTcpCall(t *testing.T) {
 func TestFailConnect(t *testing.T) {
 	var err error
 	params := Params{1, 2}
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3611")
+	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3611")
 	result := new(Result)
 	for i := 0; i < 20; i++ {
 		err = s.Call("IntRpc.Add", &params, result, false)

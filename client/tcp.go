@@ -9,13 +9,13 @@ import (
 )
 
 type Tcp struct {
-	Ip   string
-	Port string
+	Protocol    string
+	AddressList []string
 }
 
 type TcpClient struct {
-	Ip          string
-	Port        string
+	Protocol    string
+	AddressList []string
 	RequestList []*common.SingleRequest
 	Options     TcpOptions
 	Pool        *Pool
@@ -27,20 +27,18 @@ type TcpOptions struct {
 }
 
 func (p *Tcp) NewClient() Client {
-	ip := p.Ip
-	port := p.Port
-	return NewTcpClient(ip, port)
+	return NewTcpClient(p.Protocol, p.AddressList)
 }
 
-func NewTcpClient(ip string, port string) *TcpClient {
+func NewTcpClient(protocol string, addressList []string) *TcpClient {
 	options := TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
 	}
-	pool := NewPool(ip, port, PoolOptions{5, 5})
+	pool := NewPool(addressList, PoolOptions{5, 5})
 	return &TcpClient{
-		ip,
-		port,
+		protocol,
+		addressList,
 		nil,
 		options,
 		pool,

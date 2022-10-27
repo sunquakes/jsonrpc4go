@@ -3,15 +3,17 @@ package jsonrpc4go
 import (
 	"errors"
 	"github.com/sunquakes/jsonrpc4go/client"
+	"strings"
 )
 
-func NewClient(protocol string, ip string, port string) (client.Client, error) {
+func NewClient(protocol string, address string) (client.Client, error) {
 	var p client.Protocol
+	addressList := strings.Split(address, ",")
 	switch protocol {
 	case "http":
-		p = &client.Http{ip, port}
+		p = &client.Http{protocol, addressList}
 	case "tcp":
-		p = &client.Tcp{ip, port}
+		p = &client.Tcp{protocol, addressList}
 	default:
 		return nil, errors.New("The protocol can not be supported")
 	}

@@ -13,28 +13,24 @@ type PoolOptions struct {
 }
 
 type Pool struct {
-	Address     string
+	AddressList []string
 	Lock        sync.Mutex
 	Options     PoolOptions
 	ActiveTotal int
 	Conns       chan net.Conn
 }
 
-func NewPool(ip string, port string, option PoolOptions) *Pool {
+func NewPool(addressList []string, option PoolOptions) *Pool {
 	ch := make(chan net.Conn, option.MaxActive)
-	var addr = fmt.Sprintf("%s:%s", ip, port)
 	pool := &Pool{
-		addr,
+		addressList,
 		sync.Mutex{},
 		option,
 		0,
 		ch,
 	}
 	for i := 0; i < option.MinIdle; i++ {
-		err := pool.Create()
-		if err != nil {
-			fmt.Errorf("Can not connect %s", addr)
-		}
+		pool.Create()
 	}
 	return pool
 }
@@ -58,17 +54,23 @@ func (p *Pool) Release(conn net.Conn) {
 	p.Conns <- conn
 }
 
-func (p *Pool) Create() error {
-	conn, err := p.Connect()
+func (p *Pool) Create() (net.Conn, error) {
+	size := len(p.AddressList)
+	key := p.ActiveTotal % size
+	address := p.AddressList[key]
+	conn, err := p.Connect(address)
 	if err == nil {
 		p.ActiveTotal++
 		p.Conns <- conn
+	} else {
+		p.AddressList = append(p.AddressList[:key], p.AddressList[key+1:]...)
+		fmt.Errorf("Can not connect %s", address)
 	}
-	return err
+	return conn, err
 }
 
-func (p *Pool) Connect() (net.Conn, error) {
-	return net.Dial("tcp", p.Address)
+func (p *Pool) Connect(address string) (net.Conn, error) {
+	return net.Dial("tcp", address)
 }
 
 func (p *Pool) BorrowAfterRemove(conn net.Conn) (net.Conn, error) {
@@ -77,7 +79,7 @@ func (p *Pool) BorrowAfterRemove(conn net.Conn) (net.Conn, error) {
 	if conn != nil {
 		p.ActiveTotal--
 	}
-	conn, err := p.Connect()
+	conn, err := p.Create()
 	if err == nil {
 		p.ActiveTotal++
 	}

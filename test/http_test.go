@@ -29,7 +29,7 @@ func TestHttpCall(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3201")
+	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3201")
 	params := Params{1, 2}
 	result := new(Result)
 	_ = c.Call("IntRpc.Add", &params, result, false)
@@ -45,7 +45,7 @@ func TestHttpCallMethod(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3202")
+	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3202")
 	params := Params{1, 2}
 	result := new(Result)
 	_ = c.Call("int_rpc/Add", &params, result, false)
@@ -61,7 +61,7 @@ func TestHttpNotifyCall(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3203")
+	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3203")
 	params := Params{2, 3}
 	result := new(Result)
 	_ = c.Call("IntRpc.Add", &params, result, true)
@@ -77,7 +77,7 @@ func TestHttpBatchCall(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3204")
+	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3204")
 
 	result1 := new(Result)
 	err1 := c.BatchAppend("IntRpc/Add1", Params{1, 6}, result1, false)
@@ -101,7 +101,7 @@ func TestHttpRateLimit(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3205")
+	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3205")
 	result := new(Result)
 	err := c.Call("IntRpc.Add", &params, result, false)
 	if err != nil {

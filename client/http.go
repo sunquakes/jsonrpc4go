@@ -11,24 +11,24 @@ import (
 )
 
 type Http struct {
-	Ip   string
-	Port string
+	Protocol    string
+	AddressList []string
 }
 
 type HttpClient struct {
-	Ip          string
-	Port        string
+	Protocol    string
+	AddressList []string
 	RequestList []*common.SingleRequest
 }
 
-func (c *Http) NewClient() Client {
-	return NewHttpClient(c.Ip, c.Port)
+func (p *Http) NewClient() Client {
+	return NewHttpClient(p.Protocol, p.AddressList)
 }
 
-func NewHttpClient(ip string, port string) *HttpClient {
+func NewHttpClient(protocol string, addressList []string) *HttpClient {
 	return &HttpClient{
-		ip,
-		port,
+		protocol,
+		addressList,
 		nil,
 	}
 }
@@ -83,12 +83,14 @@ func (c *HttpClient) Call(method string, params any, result any, isNotify bool) 
 	} else {
 		req = common.JsonRs(strconv.FormatInt(time.Now().Unix(), 10), method, params)
 	}
+	fmt.Println(string(req))
 	err = c.handleFunc(req, result)
 	return err
 }
 
 func (c *HttpClient) handleFunc(b []byte, result any) error {
-	var url = fmt.Sprintf("http://%s:%s", c.Ip, c.Port)
+	address := GetAddress(c.AddressList)
+	url := fmt.Sprintf("%s://%s", c.Protocol, address)
 	resp, err := http.Post(url, "application/json", bytes.NewReader(b))
 	if err != nil {
 		return err
