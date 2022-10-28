@@ -83,7 +83,6 @@ func (c *HttpClient) Call(method string, params any, result any, isNotify bool) 
 	} else {
 		req = common.JsonRs(strconv.FormatInt(time.Now().Unix(), 10), method, params)
 	}
-	fmt.Println(string(req))
 	err = c.handleFunc(req, result)
 	return err
 }

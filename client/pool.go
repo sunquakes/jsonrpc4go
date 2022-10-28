@@ -13,17 +13,21 @@ type PoolOptions struct {
 }
 
 type Pool struct {
-	AddressList []string
-	Lock        sync.Mutex
-	Options     PoolOptions
-	ActiveTotal int
-	Conns       chan net.Conn
+	AddressList       []string
+	ActiveAddressList []string
+	Lock              sync.Mutex
+	Options           PoolOptions
+	ActiveTotal       int
+	Conns             chan net.Conn
 }
 
 func NewPool(addressList []string, option PoolOptions) *Pool {
 	ch := make(chan net.Conn, option.MaxActive)
+	activeAddressList := make([]string, len(addressList))
+	copy(activeAddressList, addressList)
 	pool := &Pool{
 		addressList,
+		activeAddressList,
 		sync.Mutex{},
 		option,
 		0,
@@ -55,15 +59,21 @@ func (p *Pool) Release(conn net.Conn) {
 }
 
 func (p *Pool) Create() (net.Conn, error) {
-	size := len(p.AddressList)
+	size := len(p.ActiveAddressList)
+	if size == 0 {
+		size = len(p.AddressList)
+		activeAddressList := make([]string, size)
+		copy(activeAddressList, p.AddressList)
+		p.ActiveAddressList = activeAddressList
+	}
 	key := p.ActiveTotal % size
-	address := p.AddressList[key]
+	address := p.ActiveAddressList[key]
 	conn, err := p.Connect(address)
 	if err == nil {
 		p.ActiveTotal++
 		p.Conns <- conn
 	} else {
-		p.AddressList = append(p.AddressList[:key], p.AddressList[key+1:]...)
+		p.ActiveAddressList = append(p.ActiveAddressList[:key], p.ActiveAddressList[key+1:]...)
 		fmt.Errorf("Can not connect %s", address)
 	}
 	return conn, err
