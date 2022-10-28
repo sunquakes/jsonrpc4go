@@ -95,6 +95,7 @@ func (p *Pool) BorrowAfterRemove(conn net.Conn) (net.Conn, error) {
 	if conn != nil {
 		p.ActiveTotal--
 	}
+	// When disconnected, reconnect instead of fetch from pool.
 	conn, err := p.Create()
 	if err == nil {
 		p.ActiveTotal++
