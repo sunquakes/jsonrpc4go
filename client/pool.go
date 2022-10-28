@@ -33,8 +33,14 @@ func NewPool(addressList []string, option PoolOptions) *Pool {
 		0,
 		ch,
 	}
+	pool.Lock.Lock()
+	defer pool.Lock.Unlock()
 	for i := 0; i < option.MinIdle; i++ {
-		pool.Create()
+		conn, err := pool.Create()
+		if err == nil {
+			pool.ActiveTotal++
+			pool.Conns <- conn
+		}
 	}
 	return pool
 }
@@ -48,8 +54,11 @@ func (p *Pool) Borrow() (net.Conn, error) {
 	if p.ActiveTotal >= p.Options.MaxActive {
 		return <-p.Conns, nil
 	}
-	p.Create()
-	return <-p.Conns, nil
+	conn, err := p.Create()
+	if err == nil {
+		p.ActiveTotal++
+	}
+	return conn, err
 }
 
 func (p *Pool) Release(conn net.Conn) {
@@ -69,10 +78,7 @@ func (p *Pool) Create() (net.Conn, error) {
 	key := p.ActiveTotal % size
 	address := p.ActiveAddressList[key]
 	conn, err := p.Connect(address)
-	if err == nil {
-		p.ActiveTotal++
-		p.Conns <- conn
-	} else {
+	if err != nil {
 		p.ActiveAddressList = append(p.ActiveAddressList[:key], p.ActiveAddressList[key+1:]...)
 		fmt.Errorf("Can not connect %s", address)
 	}
@@ -97,6 +103,8 @@ func (p *Pool) BorrowAfterRemove(conn net.Conn) (net.Conn, error) {
 }
 
 func (p *Pool) Remove(conn net.Conn) {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
 	if conn != nil {
 		p.ActiveTotal--
 	}
