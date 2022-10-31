@@ -12,12 +12,10 @@ import (
 )
 
 type Tcp struct {
-	Ip   string
 	Port string
 }
 
 type TcpServer struct {
-	Ip      string
 	Port    string
 	Server  common.Server
 	Options TcpOptions
@@ -35,7 +33,6 @@ func (p *Tcp) NewServer() Server {
 		1024 * 1024 * 2,
 	}
 	return &TcpServer{
-		p.Ip,
 		p.Port,
 		common.Server{
 			sync.Map{},
@@ -48,13 +45,13 @@ func (p *Tcp) NewServer() Server {
 }
 
 func (s *TcpServer) Start() {
-	var addr = fmt.Sprintf("%s:%s", s.Ip, s.Port)
+	var addr = fmt.Sprintf("0.0.0.0:%s", s.Port)
 	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		log.Panic(err.Error())
 	}
 	listener, _ := net.ListenTCP("tcp", tcpAddr)
-	log.Printf("Listening tcp://%s:%s", s.Ip, s.Port)
+	log.Printf("Listening tcp://0.0.0.0:%s", s.Port)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	s.Event <- 0
