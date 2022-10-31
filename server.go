@@ -5,7 +5,7 @@ import (
 	"github.com/sunquakes/jsonrpc4go/server"
 )
 
-func NewServer(protocol string, port string) (server.Server, error) {
+func NewServer(protocol string, port int) (server.Server, error) {
 	var p server.Protocol
 	switch protocol {
 	case "http":

@@ -13,7 +13,7 @@ import (
 )
 
 func TestTcpCall(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("tcp", "3601")
+	s, _ := jsonrpc4go.NewServer("tcp", 3601)
 	s.Register(new(IntRpc))
 	go func() {
 		s.Start()
@@ -30,7 +30,7 @@ func TestTcpCall(t *testing.T) {
 
 func TestTcpCallMethod(t *testing.T) {
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "3602")
+		s, _ := jsonrpc4go.NewServer("tcp", 3602)
 		s.Register(new(IntRpc))
 		s.Start()
 	}()
@@ -46,7 +46,7 @@ func TestTcpCallMethod(t *testing.T) {
 
 func TestTcpNotifyCall(t *testing.T) {
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "3603")
+		s, _ := jsonrpc4go.NewServer("tcp", 3603)
 		s.Register(new(IntRpc))
 		s.Start()
 	}()
@@ -62,7 +62,7 @@ func TestTcpNotifyCall(t *testing.T) {
 
 func TestTcpBatchCall(t *testing.T) {
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "3604")
+		s, _ := jsonrpc4go.NewServer("tcp", 3604)
 		s.Register(new(IntRpc))
 		s.Start()
 	}()
@@ -85,7 +85,7 @@ func TestTcpBatchCall(t *testing.T) {
 
 func TestSetOption(t *testing.T) {
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "3605")
+		s, _ := jsonrpc4go.NewServer("tcp", 3605)
 		s.SetOptions(server.TcpOptions{"aaaaaa", 2 * 1024 * 1024})
 		s.Register(new(IntRpc))
 		s.Start()
@@ -104,7 +104,7 @@ func TestSetOption(t *testing.T) {
 func TestSetHooks(t *testing.T) {
 	params := Params{1, 2}
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "3606")
+		s, _ := jsonrpc4go.NewServer("tcp", 3606)
 		s.SetBeforeFunc(func(id any, method string, p any) error {
 			if method != "IntRpc.Add" {
 				t.Errorf("Method expected be %s, but %s got", "IntRpc.Add", method)
@@ -140,7 +140,7 @@ func TestSetHooks(t *testing.T) {
 func TestSetHooksCustomError(t *testing.T) {
 	params := Params{1, 2}
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "3607")
+		s, _ := jsonrpc4go.NewServer("tcp", 3607)
 		s.SetBeforeFunc(func(id any, method string, p any) error {
 			return errors.New("Custom Error")
 		})
@@ -159,7 +159,7 @@ func TestSetHooksCustomError(t *testing.T) {
 func TestRateLimit(t *testing.T) {
 	params := Params{1, 2}
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "3608")
+		s, _ := jsonrpc4go.NewServer("tcp", 3608)
 		s.Register(new(IntRpc))
 		s.SetRateLimit(0.2, 1)
 		s.Start()
@@ -199,7 +199,7 @@ func (i *LongRpc) Add(params *LongParams, result *LongResult) error {
 
 func TestLongPackageTcpCall(t *testing.T) {
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "3609")
+		s, _ := jsonrpc4go.NewServer("tcp", 3609)
 		s.SetOptions(server.TcpOptions{"\r\n", 2 * 1024 * 1024})
 		s.Register(new(LongRpc))
 		s.Start()
@@ -237,7 +237,7 @@ func TestLongPackageTcpCall(t *testing.T) {
 
 func TestCoTcpCall(t *testing.T) {
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "3610")
+		s, _ := jsonrpc4go.NewServer("tcp", 3610)
 		s.Register(new(IntRpc))
 		s.Start()
 	}()
@@ -274,7 +274,7 @@ func TestFailConnect(t *testing.T) {
 		}
 	}
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "3611")
+		s, _ := jsonrpc4go.NewServer("tcp", 3611)
 		s.Register(new(IntRpc))
 		s.Start()
 	}()

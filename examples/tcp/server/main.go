@@ -27,7 +27,7 @@ func (i *IntRpc) Add2(params *Params, result *Result2) error {
 }
 
 func main() {
-	s, _ := jsonrpc4go.NewServer("tcp", "3232")
+	s, _ := jsonrpc4go.NewServer("tcp", 3232)
 	s.Register(new(IntRpc))
 	s.Start()
 }

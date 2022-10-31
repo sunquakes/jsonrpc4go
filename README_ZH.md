@@ -29,7 +29,7 @@ func (i *IntRpc) Add(params *Params, result *Result) error {
 }
 
 func main() {
-	s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", "3232") // http协议
+	s, _ := jsonrpc4go.NewServer("http", 3232) // http协议
 	s.Register(new(IntRpc))
 	s.Start()
 }
@@ -56,7 +56,7 @@ type Result2 struct {
 
 func main() {
 	result := new(Result)
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1", "3232") // http协议
+	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3232") // http协议
 	err := c.Call("IntRpc/Add", Params{1, 6}, result, false) // 路由支持以下3种格式: "int_rpc/Add", "int_rpc.Add", "IntRpc.Add"
 	// 发送的数据格式: {"id":"1604283212", "jsonrpc":"2.0", "method":"IntRpc/Add", "params":{"a":1,"b":6}}
 	// 接收的数据格式: {"id":"1604283212", "jsonrpc":"2.0", "result":7}
@@ -71,9 +71,9 @@ go test -v ./test/...
 ## 🚀 更多特性
 - tcp协议
 ```go
-s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3232") // tcp协议
+s, _ := jsonrpc4go.NewServer("tcp", 3232) // tcp协议
 
-c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1", "3232") // tcp协议
+c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3232") // tcp协议
 ```
 - 钩子 (在代码's.Start()'前添加下面的代码)
 ```go

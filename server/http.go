@@ -11,11 +11,11 @@ import (
 )
 
 type Http struct {
-	Port string
+	Port int
 }
 
 type HttpServer struct {
-	Port    string
+	Port    int
 	Server  common.Server
 	Options HttpOptions
 	Event   chan int
@@ -41,8 +41,8 @@ func (p *Http) NewServer() Server {
 func (s *HttpServer) Start() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleFunc)
-	var url = fmt.Sprintf("0.0.0.0:%s", s.Port)
-	log.Printf("Listening http://0.0.0.0:%s", s.Port)
+	var url = fmt.Sprintf("0.0.0.0:%d", s.Port)
+	log.Printf("Listening http://0.0.0.0:%d", s.Port)
 	s.Event <- 0
 	err := http.ListenAndServe(url, mux)
 	if err != nil {
