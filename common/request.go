@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/goinggo/mapstructure"
+	"github.com/mitchellh/mapstructure"
 	"reflect"
 	"strings"
 )

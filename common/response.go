@@ -3,7 +3,7 @@ package common
 import (
 	"encoding/json"
 	"errors"
-	"github.com/goinggo/mapstructure"
+	"github.com/mitchellh/mapstructure"
 	"reflect"
 )
 
