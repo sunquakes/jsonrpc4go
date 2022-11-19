@@ -286,3 +286,35 @@ func TestFailConnect(t *testing.T) {
 		}
 	}
 }
+
+func TestRibbonTcpCall(t *testing.T) {
+	go func() {
+		s, _ := jsonrpc4go.NewServer("tcp", 3612)
+		s.Register(new(IntRpc))
+		s.Start()
+	}()
+	go func() {
+		s, _ := jsonrpc4go.NewServer("tcp", 3613)
+		s.Register(new(IntRpc))
+		s.Start()
+	}()
+	time.Sleep(time.Duration(2) * time.Second)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func(group *sync.WaitGroup) {
+			defer group.Done()
+			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3612,127.0.0.1:3613")
+			for j := 0; j < 20; j++ {
+				params := Params{i, j}
+				result := new(Result)
+				c.Call("IntRpc.Add", &params, result, false)
+				if *result != (i + j) {
+					t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, (i + j), *result)
+				}
+			}
+		}(&wg)
+	}
+	wg.Wait()
+}

@@ -126,5 +126,9 @@ fmt.Println(*result3) // 0
 fmt.Println(*err4) // nil
 fmt.Println(*result4) // 5
 ```
+- Client-Side Load-Balancing
+```go
+c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3232,127.0.0.1:3233,127.0.0.1:3234")
+```
 ## 📄 License
 Source code in `jsonrpc4go` is available under the [Apache-2.0 license](/LICENSE).
