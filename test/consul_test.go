@@ -36,3 +36,18 @@ func TestGet(t *testing.T) {
 		t.Errorf("URL expected be %s, but %s got", "", "")
 	}
 }
+
+func TestRegister(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, ``)
+	}))
+	defer ts.Close()
+	r, err := consul.NewConsul(ts.URL)
+	if err != nil {
+		t.Error(err)
+	}
+	err = r.Register("java_tcp", "tcp", "192.168.0.0", 9999)
+	if err != nil {
+		t.Error(err)
+	}
+}
