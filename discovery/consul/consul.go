@@ -35,6 +35,17 @@ type RegisterService struct {
 	Address string `json:"Address"`
 }
 
+type Check struct {
+	ID        string `json:"ID"`
+	Name      string `json:"Name"`
+	ServiceID string `json:"ServiceID"`
+	HTTP      string `json:"HTTP"`
+	Method    string `json:"Method"`
+	TCP       string `json:"TCP"`
+	Interval  string `json:"Interval"`
+	Timeout   string `json:"Timeout"`
+}
+
 func NewConsul(rawURL string) (discovery.Driver, error) {
 	URL, err := url.Parse(rawURL)
 	if err != nil {
@@ -103,4 +114,28 @@ func (d *Consul) Get(name string) (string, error) {
 		ua = append(ua, fmt.Sprintf("%s:%d", v.Service.Address, v.Service.Port))
 	}
 	return strings.Join(ua, ",")[1:], err
+}
+
+func (d *Consul) Check(check *Check) error {
+	URL, err := GetURL(d.URL.Redacted(), "/v1/agent/check/register", d.Token)
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(check)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("PUT", URL, strings.NewReader(string(b)))
+	if err != nil {
+		return err
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != STATUS_CODE_PASSING {
+		return errors.New(StatusCodeMap[resp.StatusCode])
+	}
+	return nil
 }

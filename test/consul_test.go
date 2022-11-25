@@ -5,6 +5,7 @@ import (
 	"github.com/sunquakes/jsonrpc4go/discovery/consul"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -47,6 +48,34 @@ func TestRegister(t *testing.T) {
 		t.Error(err)
 	}
 	err = r.Register("java_tcp", "tcp", "192.168.0.0", 9999)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestCheck(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, ``)
+	}))
+	defer ts.Close()
+	URL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Error(err)
+	}
+	r := &consul.Consul{URL, URL.Query().Get("token")}
+	if err != nil {
+		t.Error(err)
+	}
+	err = r.Check(&consul.Check{
+		"java_tcp:9999",
+		"java_tcp",
+		"java_tcp:9999",
+		"",
+		"",
+		"localhost:9999",
+		"10s",
+		"10s",
+	})
 	if err != nil {
 		t.Error(err)
 	}
