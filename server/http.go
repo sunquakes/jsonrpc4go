@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/discovery"
 	"golang.org/x/time/rate"
 	"io/ioutil"
 	"log"
@@ -11,14 +12,17 @@ import (
 )
 
 type Http struct {
-	Port int
+	Hostname string
+	Port     int
 }
 
 type HttpServer struct {
-	Port    int
-	Server  common.Server
-	Options HttpOptions
-	Event   chan int
+	Hostname  string
+	Port      int
+	Server    common.Server
+	Options   HttpOptions
+	Event     chan int
+	Registrar discovery.Driver
 }
 
 type HttpOptions struct {
@@ -27,6 +31,7 @@ type HttpOptions struct {
 func (p *Http) NewServer() Server {
 	options := HttpOptions{}
 	return &HttpServer{
+		p.Hostname,
 		p.Port,
 		common.Server{
 			sync.Map{},
@@ -35,10 +40,22 @@ func (p *Http) NewServer() Server {
 		},
 		options,
 		make(chan int, 1),
+		nil,
 	}
 }
 
 func (s *HttpServer) Start() {
+	// Register services
+	if s.Registrar != nil {
+		register := func(key, value interface{}) bool {
+			err := s.Registrar.Register(key.(string), "tcp", s.Hostname, s.Port)
+			if err == nil {
+				return true
+			}
+			return false
+		}
+		s.Server.Sm.Range(register)
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleFunc)
 	var url = fmt.Sprintf("0.0.0.0:%d", s.Port)
@@ -59,6 +76,10 @@ func (s *HttpServer) Register(m any) {
 
 func (s *HttpServer) SetOptions(httpOptions any) {
 	s.Options = httpOptions.(HttpOptions)
+}
+
+func (s *HttpServer) SetRegister(d discovery.Driver) {
+	s.Registrar = d
 }
 
 func (s *HttpServer) SetRateLimit(r rate.Limit, b int) {

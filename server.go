@@ -5,13 +5,13 @@ import (
 	"github.com/sunquakes/jsonrpc4go/server"
 )
 
-func NewServer(protocol string, port int) (server.Server, error) {
+func NewServer(protocol string, hostname string, port int) (server.Server, error) {
 	var p server.Protocol
 	switch protocol {
 	case "http":
-		p = &server.Http{port}
+		p = &server.Http{hostname, port}
 	case "tcp":
-		p = &server.Tcp{port}
+		p = &server.Tcp{hostname, port}
 	default:
 		return nil, errors.New("The protocol can not be supported")
 	}

@@ -1,6 +1,9 @@
 package server
 
-import "golang.org/x/time/rate"
+import (
+	"github.com/sunquakes/jsonrpc4go/discovery"
+	"golang.org/x/time/rate"
+)
 
 type Protocol interface {
 	NewServer() Server
@@ -10,6 +13,7 @@ type Server interface {
 	SetBeforeFunc(func(id any, method string, params any) error)
 	SetAfterFunc(func(id any, method string, result any) error)
 	SetOptions(any)
+	SetRegister(d discovery.Driver)
 	SetRateLimit(rate.Limit, int)
 	Start()
 	Register(s any)

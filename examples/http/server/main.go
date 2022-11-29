@@ -27,7 +27,7 @@ func (i *IntRpc) Add2(params *Params, result *Result2) error {
 }
 
 func main() {
-	s, _ := jsonrpc4go.NewServer("http", 3232) // the protocol is http
+	s, _ := jsonrpc4go.NewServer("http", "localhost", 3232) // the protocol is http
 	// s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", "3232") // the protocol is tcp
 	// s.SetOptions(server.TcpOptions{"aaaaaa", 2 * 1024 * 1024}) // Custom package EOF when the protocol is tcp
 	s.SetBeforeFunc(func(id any, method string, params any) error {

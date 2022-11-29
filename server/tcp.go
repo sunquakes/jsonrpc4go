@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/discovery"
 	"golang.org/x/time/rate"
 	"log"
 	"net"
@@ -12,14 +13,17 @@ import (
 )
 
 type Tcp struct {
-	Port int
+	Hostname string
+	Port     int
 }
 
 type TcpServer struct {
-	Port    int
-	Server  common.Server
-	Options TcpOptions
-	Event   chan int
+	Hostname  string
+	Port      int
+	Server    common.Server
+	Options   TcpOptions
+	Event     chan int
+	Registrar discovery.Driver
 }
 
 type TcpOptions struct {
@@ -33,6 +37,7 @@ func (p *Tcp) NewServer() Server {
 		1024 * 1024 * 2,
 	}
 	return &TcpServer{
+		p.Hostname,
 		p.Port,
 		common.Server{
 			sync.Map{},
@@ -41,10 +46,23 @@ func (p *Tcp) NewServer() Server {
 		},
 		options,
 		make(chan int, 1),
+		nil,
 	}
 }
 
 func (s *TcpServer) Start() {
+	// Register services
+	if s.Registrar != nil {
+		register := func(key, value interface{}) bool {
+			err := s.Registrar.Register(key.(string), "tcp", s.Hostname, s.Port)
+			if err == nil {
+				return true
+			}
+			return false
+		}
+		s.Server.Sm.Range(register)
+	}
+	// Start the server
 	var addr = fmt.Sprintf("0.0.0.0:%d", s.Port)
 	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
@@ -71,6 +89,10 @@ func (s *TcpServer) Register(m any) {
 
 func (s *TcpServer) SetOptions(tcpOptions any) {
 	s.Options = tcpOptions.(TcpOptions)
+}
+
+func (s *TcpServer) SetRegister(d discovery.Driver) {
+	s.Registrar = d
 }
 
 func (s *TcpServer) SetRateLimit(r rate.Limit, b int) {

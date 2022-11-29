@@ -90,6 +90,31 @@ func (d *Consul) Register(name string, protocol string, hostname string, port in
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		return errors.New(StatusCodeMap[resp.StatusCode])
 	}
+	check := d.URL.Query().Get("check")
+	if check == "true" {
+		interval := d.URL.Query().Get("interval")
+		timeout := d.URL.Query().Get("timeout")
+		var http, method, tcp string
+		if protocol == "http" || protocol == "https" {
+			http = fmt.Sprintf("%s://%s:%d", protocol, hostname, port)
+		} else if protocol == "tcp" {
+			tcp = fmt.Sprintf("%s:%d", hostname, port)
+		}
+		check := &Check{
+			ID,
+			name,
+			ID,
+			http,
+			method,
+			tcp,
+			interval,
+			timeout,
+		}
+		err := d.Check(check)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

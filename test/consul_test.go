@@ -47,7 +47,7 @@ func TestRegister(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = r.Register("java_tcp", "tcp", "192.168.0.0", 9999)
+	err = r.Register("java_tcp", "tcp", "192.168.1.15", 3232)
 	if err != nil {
 		t.Error(err)
 	}
