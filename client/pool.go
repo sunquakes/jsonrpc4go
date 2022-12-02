@@ -3,7 +3,9 @@ package client
 import (
 	"errors"
 	"fmt"
+	"github.com/sunquakes/jsonrpc4go/discovery"
 	"net"
+	"strings"
 	"sync"
 )
 
@@ -13,7 +15,9 @@ type PoolOptions struct {
 }
 
 type Pool struct {
-	AddressList       []string
+	Name              string
+	Registrar         discovery.Driver
+	Address           string
 	ActiveAddressList []string
 	Lock              sync.Mutex
 	Options           PoolOptions
@@ -21,18 +25,19 @@ type Pool struct {
 	Conns             chan net.Conn
 }
 
-func NewPool(addressList []string, option PoolOptions) *Pool {
+func NewPool(name, address string, registrar discovery.Driver, option PoolOptions) *Pool {
 	ch := make(chan net.Conn, option.MaxActive)
-	activeAddressList := make([]string, len(addressList))
-	copy(activeAddressList, addressList)
 	pool := &Pool{
-		addressList,
-		activeAddressList,
+		name,
+		registrar,
+		address,
+		nil,
 		sync.Mutex{},
 		option,
 		0,
 		ch,
 	}
+	pool.ActiveAddress()
 	pool.Lock.Lock()
 	defer pool.Lock.Unlock()
 	for i := 0; i < option.MinIdle; i++ {
@@ -43,6 +48,24 @@ func NewPool(addressList []string, option PoolOptions) *Pool {
 		}
 	}
 	return pool
+}
+
+func (p *Pool) ActiveAddress() (int, error) {
+	var (
+		address string
+		err     error
+	)
+	if p.Registrar != nil {
+		address, err = p.Registrar.Get(p.Name)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		address = p.Address
+	}
+	addressList := strings.Split(address, ",")
+	p.ActiveAddressList = addressList
+	return len(addressList), nil
 }
 
 func (p *Pool) Borrow() (net.Conn, error) {
@@ -68,12 +91,13 @@ func (p *Pool) Release(conn net.Conn) {
 }
 
 func (p *Pool) Create() (net.Conn, error) {
+	var err error
 	size := len(p.ActiveAddressList)
 	if size == 0 {
-		size = len(p.AddressList)
-		activeAddressList := make([]string, size)
-		copy(activeAddressList, p.AddressList)
-		p.ActiveAddressList = activeAddressList
+		size, err = p.ActiveAddress()
+		if err != nil {
+			return nil, err
+		}
 	}
 	key := p.ActiveTotal % size
 	address := p.ActiveAddressList[key]

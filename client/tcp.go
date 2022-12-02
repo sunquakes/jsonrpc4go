@@ -2,20 +2,26 @@ package client
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/discovery"
 	"net"
 	"strconv"
 	"time"
 )
 
 type Tcp struct {
-	Protocol    string
-	AddressList []string
+	Name      string
+	Protocol  string
+	Address   string
+	Registrar discovery.Driver
 }
 
 type TcpClient struct {
+	Name        string
 	Protocol    string
-	AddressList []string
+	Address     string
+	Registrar   discovery.Driver
 	RequestList []*common.SingleRequest
 	Options     TcpOptions
 	Pool        *Pool
@@ -27,18 +33,20 @@ type TcpOptions struct {
 }
 
 func (p *Tcp) NewClient() Client {
-	return NewTcpClient(p.Protocol, p.AddressList)
+	return NewTcpClient(p.Name, p.Protocol, p.Address, p.Registrar)
 }
 
-func NewTcpClient(protocol string, addressList []string) *TcpClient {
+func NewTcpClient(name string, protocol string, address string, registrar discovery.Driver) *TcpClient {
 	options := TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
 	}
-	pool := NewPool(addressList, PoolOptions{5, 5})
+	pool := NewPool(name, address, registrar, PoolOptions{5, 5})
 	return &TcpClient{
+		name,
 		protocol,
-		addressList,
+		address,
+		registrar,
 		nil,
 		options,
 		pool,
@@ -66,10 +74,11 @@ func (c *TcpClient) BatchCall() error {
 		var (
 			req any
 		)
+		method := fmt.Sprintf("%s/%s", c.Name, v.Method)
 		if v.IsNotify == true {
-			req = common.Rs(nil, v.Method, v.Params)
+			req = common.Rs(nil, method, v.Params)
 		} else {
-			req = common.Rs(strconv.FormatInt(time.Now().Unix(), 10), v.Method, v.Params)
+			req = common.Rs(strconv.FormatInt(time.Now().Unix(), 10), method, v.Params)
 		}
 		br = append(br, req)
 	}
@@ -93,6 +102,7 @@ func (c *TcpClient) Call(method string, params any, result any, isNotify bool) e
 		err error
 		req []byte
 	)
+	method = fmt.Sprintf("%s/%s", c.Name, method)
 	if isNotify {
 		req = common.JsonRs(nil, method, params)
 	} else {

@@ -161,7 +161,7 @@ func (svr *Server) SingleHandler(jsonMap map[string]any) any {
 
 	// before
 	if svr.Hooks.BeforeFunc != nil {
-		err = svr.Hooks.BeforeFunc(id, method, params.Elem().Interface())
+		err = svr.Hooks.BeforeFunc(id, mName, params.Elem().Interface())
 		if err != nil {
 			return CE(id, jsonRpc, err.Error())
 		}
@@ -175,7 +175,7 @@ func (svr *Server) SingleHandler(jsonMap map[string]any) any {
 	}
 	// after
 	if svr.Hooks.AfterFunc != nil {
-		err = svr.Hooks.AfterFunc(id, method, result.Elem().Interface())
+		err = svr.Hooks.AfterFunc(id, mName, result.Elem().Interface())
 		if err != nil {
 			return CE(id, jsonRpc, err.Error())
 		}

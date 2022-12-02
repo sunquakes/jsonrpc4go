@@ -19,10 +19,10 @@ func TestTcpCall(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3601")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3601")
 	params := Params{1, 2}
 	result := new(Result)
-	c.Call("IntRpc.Add", &params, result, false)
+	c.Call("Add", &params, result, false)
 	if *result != 3 {
 		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
 	}
@@ -35,10 +35,10 @@ func TestTcpCallMethod(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3602")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3602")
 	params := Params{1, 2}
 	result := new(Result)
-	c.Call("int_rpc/Add", &params, result, false)
+	c.Call("Add", &params, result, false)
 	if *result != 3 {
 		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
 	}
@@ -51,10 +51,10 @@ func TestTcpNotifyCall(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3603")
+	s, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3603")
 	params := Params{2, 3}
 	result := new(Result)
-	s.Call("IntRpc.Add", &params, result, true)
+	s.Call("Add", &params, result, true)
 	if *result != 5 {
 		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 5, *result)
 	}
@@ -67,12 +67,12 @@ func TestTcpBatchCall(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3604")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3604")
 
 	result1 := new(Result)
-	err1 := c.BatchAppend("IntRpc/Add1", Params{1, 6}, result1, false)
+	err1 := c.BatchAppend("Add1", Params{1, 6}, result1, false)
 	result2 := new(Result)
-	err2 := c.BatchAppend("IntRpc/Add", Params{2, 3}, result2, false)
+	err2 := c.BatchAppend("Add", Params{2, 3}, result2, false)
 	c.BatchCall()
 
 	if *err2 != nil || *result2 != 5 {
@@ -91,11 +91,11 @@ func TestSetOption(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3605")
+	s, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3605")
 	s.SetOptions(client.TcpOptions{"aaaaaa", 2 * 1024 * 1024})
 	params := Params{1, 2}
 	result := new(Result)
-	s.Call("IntRpc.Add", &params, result, false)
+	s.Call("Add", &params, result, false)
 	if *result != 3 {
 		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
 	}
@@ -106,8 +106,8 @@ func TestSetHooks(t *testing.T) {
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", "localhost", 3606)
 		s.SetBeforeFunc(func(id any, method string, p any) error {
-			if method != "IntRpc.Add" {
-				t.Errorf("Method expected be %s, but %s got", "IntRpc.Add", method)
+			if method != "Add" {
+				t.Errorf("Method expected be %s, but %s got", "Add", method)
 			}
 			if p.(Params) != params {
 				jsonParams, _ := json.Marshal(params)
@@ -117,8 +117,8 @@ func TestSetHooks(t *testing.T) {
 			return nil
 		})
 		s.SetAfterFunc(func(id any, method string, r any) error {
-			if method != "IntRpc.Add" {
-				t.Errorf("Method expected be %s, but %s got", "IntRpc.Add", method)
+			if method != "Add" {
+				t.Errorf("Method expected be %s, but %s got", "Add", method)
 			}
 			if r != 3 {
 				t.Errorf("Result expected be %d, but %d got", 3, r)
@@ -129,9 +129,9 @@ func TestSetHooks(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3606")
+	s, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3606")
 	result := new(Result)
-	s.Call("IntRpc.Add", &params, result, false)
+	s.Call("Add", &params, result, false)
 	if *result != 3 {
 		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
 	}
@@ -148,9 +148,9 @@ func TestSetHooksCustomError(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3607")
+	s, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3607")
 	result := new(Result)
-	err := s.Call("IntRpc.Add", &params, result, false)
+	err := s.Call("Add", &params, result, false)
 	if err.Error() != "Custom Error" {
 		t.Errorf("Error expected be %s, but %s got", "Custom Error", err.Error())
 	}
@@ -165,18 +165,18 @@ func TestRateLimit(t *testing.T) {
 		s.Start()
 	}()
 	time.Sleep(time.Duration(5) * time.Second)
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3608")
+	s, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3608")
 	result := new(Result)
-	err := s.Call("IntRpc.Add", &params, result, false)
+	err := s.Call("Add", &params, result, false)
 	if err != nil {
 		t.Errorf("Error expected be %s, but %s got", "nil", err.Error())
 	}
-	err = s.Call("IntRpc.Add", &params, result, false)
+	err = s.Call("Add", &params, result, false)
 	if err.Error() != "Too many requests" {
 		t.Errorf("Error expected be %s, but %s got", "Too many requests", err.Error())
 	}
 	time.Sleep(time.Duration(5) * time.Second)
-	err = s.Call("IntRpc.Add", &params, result, false)
+	err = s.Call("Add", &params, result, false)
 	if err != nil {
 		t.Errorf("Error expected be %s, but %s got", "nil", err.Error())
 	}
@@ -210,12 +210,12 @@ func TestLongPackageTcpCall(t *testing.T) {
 		wg.Add(1)
 		go func(group *sync.WaitGroup) {
 			defer group.Done()
-			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3609")
+			c, _ := jsonrpc4go.NewClient("LongRpc", "tcp", "127.0.0.1:3609")
 			c.SetOptions(client.TcpOptions{"\r\n", 2 * 1024 * 1024})
 			params := LongParams{LongString1, LongString2}
 			result := new(LongResult)
 			for j := 0; j < 100; j++ {
-				c.Call("LongRpc.Add", &params, result, false)
+				c.Call("Add", &params, result, false)
 				ls := LongString1 + LongString2
 				if *result != ls {
 					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
@@ -223,7 +223,7 @@ func TestLongPackageTcpCall(t *testing.T) {
 			}
 			time.Sleep(time.Duration(2) * time.Second)
 			for j := 0; j < 100; j++ {
-				c.Call("LongRpc.Add", &params, result, false)
+				c.Call("Add", &params, result, false)
 				ls := LongString1 + LongString2
 				if *result != ls {
 					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
@@ -248,11 +248,11 @@ func TestCoTcpCall(t *testing.T) {
 		wg.Add(1)
 		go func(group *sync.WaitGroup) {
 			defer group.Done()
-			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3610")
+			c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3610")
 			for j := 0; j < 100; j++ {
 				params := Params{i, j}
 				result := new(Result)
-				c.Call("IntRpc.Add", &params, result, false)
+				c.Call("Add", &params, result, false)
 				if *result != (i + j) {
 					t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, (i + j), *result)
 				}
@@ -265,10 +265,10 @@ func TestCoTcpCall(t *testing.T) {
 func TestFailConnect(t *testing.T) {
 	var err error
 	params := Params{1, 2}
-	s, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3611")
+	s, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3611")
 	result := new(Result)
 	for i := 0; i < 20; i++ {
-		err = s.Call("IntRpc.Add", &params, result, false)
+		err = s.Call("Add", &params, result, false)
 		if err == nil {
 			t.Errorf("Error expected be not nil, but nil got")
 		}
@@ -280,7 +280,7 @@ func TestFailConnect(t *testing.T) {
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
 	for i := 0; i < 20; i++ {
-		err = s.Call("IntRpc.Add", &params, result, false)
+		err = s.Call("Add", &params, result, false)
 		if err != nil {
 			t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
 		}
@@ -305,11 +305,11 @@ func TestRibbonTcpCall(t *testing.T) {
 		wg.Add(1)
 		go func(group *sync.WaitGroup) {
 			defer group.Done()
-			c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3612,127.0.0.1:3613")
+			c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3612,127.0.0.1:3613")
 			for j := 0; j < 20; j++ {
 				params := Params{i, j}
 				result := new(Result)
-				c.Call("IntRpc.Add", &params, result, false)
+				c.Call("Add", &params, result, false)
 				if *result != (i + j) {
 					t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, (i + j), *result)
 				}

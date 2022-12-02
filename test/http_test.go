@@ -29,10 +29,10 @@ func TestHttpCall(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3201")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3201")
 	params := Params{1, 2}
 	result := new(Result)
-	_ = c.Call("IntRpc.Add", &params, result, false)
+	_ = c.Call("Add", &params, result, false)
 	if *result != 3 {
 		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
 	}
@@ -45,10 +45,10 @@ func TestHttpCallMethod(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3202")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3202")
 	params := Params{1, 2}
 	result := new(Result)
-	_ = c.Call("int_rpc/Add", &params, result, false)
+	_ = c.Call("Add", &params, result, false)
 	if *result != 3 {
 		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
 	}
@@ -61,10 +61,10 @@ func TestHttpNotifyCall(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3203")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3203")
 	params := Params{2, 3}
 	result := new(Result)
-	_ = c.Call("IntRpc.Add", &params, result, true)
+	_ = c.Call("Add", &params, result, true)
 	if *result != 5 {
 		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 5, *result)
 	}
@@ -77,12 +77,12 @@ func TestHttpBatchCall(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3204")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3204")
 
 	result1 := new(Result)
-	err1 := c.BatchAppend("IntRpc/Add1", Params{1, 6}, result1, false)
+	err1 := c.BatchAppend("Add1", Params{1, 6}, result1, false)
 	result2 := new(Result)
-	err2 := c.BatchAppend("IntRpc/Add", Params{2, 3}, result2, false)
+	err2 := c.BatchAppend("Add", Params{2, 3}, result2, false)
 	_ = c.BatchCall()
 	if *err2 != nil || *result2 != 5 {
 		t.Errorf("%d + %d expected be %d, but %d got", 2, 3, 5, result2)
@@ -101,18 +101,18 @@ func TestHttpRateLimit(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3205")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3205")
 	result := new(Result)
-	err := c.Call("IntRpc.Add", &params, result, false)
+	err := c.Call("Add", &params, result, false)
 	if err != nil {
 		t.Errorf("Error expected be %s, but %s got", "nil", err.Error())
 	}
-	err = c.Call("IntRpc.Add", &params, result, false)
+	err = c.Call("Add", &params, result, false)
 	if err.Error() != "Too many requests" {
 		t.Errorf("Error expected be %s, but %s got", "Too many requests", err.Error())
 	}
 	time.Sleep(time.Duration(2) * time.Second)
-	err = c.Call("IntRpc.Add", &params, result, false)
+	err = c.Call("Add", &params, result, false)
 	if err != nil {
 		t.Errorf("Error expected be %s, but %s got", "nil", err.Error())
 	}
