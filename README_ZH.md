@@ -29,7 +29,7 @@ func (i *IntRpc) Add(params *Params, result *Result) error {
 }
 
 func main() {
-	s, _ := jsonrpc4go.NewServer("http", 3232) // http协议
+	s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", 3232) // http协议
 	s.Register(new(IntRpc))
 	s.Start()
 }
@@ -56,8 +56,8 @@ type Result2 struct {
 
 func main() {
 	result := new(Result)
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3232") // http协议
-	err := c.Call("IntRpc/Add", Params{1, 6}, result, false) // 路由支持以下3种格式: "int_rpc/Add", "int_rpc.Add", "IntRpc.Add"
+	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232") // http协议
+	err := c.Call("Add", Params{1, 6}, result, false)
 	// 发送的数据格式: {"id":"1604283212", "jsonrpc":"2.0", "method":"IntRpc/Add", "params":{"a":1,"b":6}}
 	// 接收的数据格式: {"id":"1604283212", "jsonrpc":"2.0", "result":7}
 	fmt.Println(err) // nil
@@ -71,9 +71,9 @@ go test -v ./test/...
 ## 🚀 更多特性
 - tcp协议
 ```go
-s, _ := jsonrpc4go.NewServer("tcp", 3232) // tcp协议
+s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", 3232) // tcp协议
 
-c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3232") // tcp协议
+c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232") // tcp协议
 ```
 - 钩子 (在代码's.Start()'前添加下面的代码)
 ```go
@@ -105,7 +105,7 @@ c.SetOptions(client.TcpOptions{"aaaaaa", nil}) // 仅tcp协议生效
 ```go
 // 通知
 result2 := new(Result2)
-err2 := c.Call("int_rpc/Add2", Params{1, 6}, result2, true) // 第一个参数可以是"IntRpc/Add2"、"int_rpc.Add2"或"IntRpc.Add2"
+err2 := c.Call("Add2", Params{1, 6}, result2, true)
 // 发送的数据格式: {"jsonrpc":"2.0","method":"IntRpc/Add2","params":{"a":1,"b":6}}
 // 接收的数据格式: {"jsonrpc":"2.0","result":{"c":7}}
 fmt.Println(err2) // nil
@@ -115,9 +115,9 @@ fmt.Println(*result2) // {7}
 ```go
 // 批量请求
 result3 := new(Result)
-err3 := c.BatchAppend("IntRpc/Add1", Params{1, 6}, result3, false)
+err3 := c.BatchAppend("Add1", Params{1, 6}, result3, false)
 result4 := new(Result)
-err4 := c.BatchAppend("IntRpc/Add", Params{2, 3}, result4, false)
+err4 := c.BatchAppend("Add", Params{2, 3}, result4, false)
 c.BatchCall()
 // 发送的数据格式: [{"id":"1604283212","jsonrpc":"2.0","method":"IntRpc/Add1","params":{"a":1,"b":6}},{"id":"1604283212","jsonrpc":"2.0","method":"IntRpc/Add","params":{"a":2,"b":3}}]
 // 接收的数据格式: [{"id":"1604283212","jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found","data":null}},{"id":"1604283212","jsonrpc":"2.0","result":5}]
@@ -126,9 +126,25 @@ fmt.Println(*result3) // 0
 fmt.Println(*err4) // nil
 fmt.Println(*result4) // 5
 ```
+
+## 服务注册和发现
+### Consul
+```go
+dc, _ := consul.NewConsul(ts.URL)
+
+// 在服务端设置 
+s, _ := jsonrpc4go.NewServer("tcp", "localhost", 3614)
+s.SetDiscovery(dc)
+s.Register(new(IntRpc))
+s.Start()
+
+// 在客户端设置
+c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
+```
+
 - 用户端负载均衡
 ```go
-c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3232,127.0.0.1:3233,127.0.0.1:3234")
+c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127.0.0.1:3234")
 ```
 ## 📄 License
 `jsonrpc4go`代码遵守[Apache-2.0 license](/LICENSE)开源协议。

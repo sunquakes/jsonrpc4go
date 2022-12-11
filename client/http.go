@@ -15,27 +15,27 @@ type Http struct {
 	Name      string
 	Protocol  string
 	Address   string
-	Registrar discovery.Driver
+	Discovery discovery.Driver
 }
 
 type HttpClient struct {
 	Name        string
 	Protocol    string
 	Address     string
-	Registrar   discovery.Driver
+	Discovery   discovery.Driver
 	RequestList []*common.SingleRequest
 }
 
 func (p *Http) NewClient() Client {
-	return NewHttpClient(p.Name, p.Protocol, p.Address, p.Registrar)
+	return NewHttpClient(p.Name, p.Protocol, p.Address, p.Discovery)
 }
 
-func NewHttpClient(name string, protocol string, address string, registrar discovery.Driver) *HttpClient {
+func NewHttpClient(name string, protocol string, address string, dc discovery.Driver) *HttpClient {
 	return &HttpClient{
 		name,
 		protocol,
 		address,
-		registrar,
+		dc,
 		nil,
 	}
 }

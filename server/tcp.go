@@ -23,7 +23,7 @@ type TcpServer struct {
 	Server    common.Server
 	Options   TcpOptions
 	Event     chan int
-	Registrar discovery.Driver
+	Discovery discovery.Driver
 }
 
 type TcpOptions struct {
@@ -52,9 +52,9 @@ func (p *Tcp) NewServer() Server {
 
 func (s *TcpServer) Start() {
 	// Register services
-	if s.Registrar != nil {
+	if s.Discovery != nil {
 		register := func(key, value interface{}) bool {
-			err := s.Registrar.Register(key.(string), "tcp", s.Hostname, s.Port)
+			err := s.Discovery.Register(key.(string), "tcp", s.Hostname, s.Port)
 			if err == nil {
 				return true
 			}
@@ -91,8 +91,8 @@ func (s *TcpServer) SetOptions(tcpOptions any) {
 	s.Options = tcpOptions.(TcpOptions)
 }
 
-func (s *TcpServer) SetRegister(d discovery.Driver) {
-	s.Registrar = d
+func (s *TcpServer) SetDiscovery(d discovery.Driver) {
+	s.Discovery = d
 }
 
 func (s *TcpServer) SetRateLimit(r rate.Limit, b int) {

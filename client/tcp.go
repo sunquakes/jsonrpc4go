@@ -14,14 +14,14 @@ type Tcp struct {
 	Name      string
 	Protocol  string
 	Address   string
-	Registrar discovery.Driver
+	Discovery discovery.Driver
 }
 
 type TcpClient struct {
 	Name        string
 	Protocol    string
 	Address     string
-	Registrar   discovery.Driver
+	Discovery   discovery.Driver
 	RequestList []*common.SingleRequest
 	Options     TcpOptions
 	Pool        *Pool
@@ -33,20 +33,20 @@ type TcpOptions struct {
 }
 
 func (p *Tcp) NewClient() Client {
-	return NewTcpClient(p.Name, p.Protocol, p.Address, p.Registrar)
+	return NewTcpClient(p.Name, p.Protocol, p.Address, p.Discovery)
 }
 
-func NewTcpClient(name string, protocol string, address string, registrar discovery.Driver) *TcpClient {
+func NewTcpClient(name string, protocol string, address string, dc discovery.Driver) *TcpClient {
 	options := TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
 	}
-	pool := NewPool(name, address, registrar, PoolOptions{5, 5})
+	pool := NewPool(name, address, dc, PoolOptions{5, 5})
 	return &TcpClient{
 		name,
 		protocol,
 		address,
-		registrar,
+		dc,
 		nil,
 		options,
 		pool,

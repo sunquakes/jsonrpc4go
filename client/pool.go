@@ -16,7 +16,7 @@ type PoolOptions struct {
 
 type Pool struct {
 	Name              string
-	Registrar         discovery.Driver
+	Discovery         discovery.Driver
 	Address           string
 	ActiveAddressList []string
 	Lock              sync.Mutex
@@ -25,11 +25,11 @@ type Pool struct {
 	Conns             chan net.Conn
 }
 
-func NewPool(name, address string, registrar discovery.Driver, option PoolOptions) *Pool {
+func NewPool(name, address string, dc discovery.Driver, option PoolOptions) *Pool {
 	ch := make(chan net.Conn, option.MaxActive)
 	pool := &Pool{
 		name,
-		registrar,
+		dc,
 		address,
 		nil,
 		sync.Mutex{},
@@ -55,8 +55,8 @@ func (p *Pool) ActiveAddress() (int, error) {
 		address string
 		err     error
 	)
-	if p.Registrar != nil {
-		address, err = p.Registrar.Get(p.Name)
+	if p.Discovery != nil {
+		address, err = p.Discovery.Get(p.Name)
 		if err != nil {
 			return 0, err
 		}

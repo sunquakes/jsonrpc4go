@@ -22,7 +22,7 @@ type HttpServer struct {
 	Server    common.Server
 	Options   HttpOptions
 	Event     chan int
-	Registrar discovery.Driver
+	Discovery discovery.Driver
 }
 
 type HttpOptions struct {
@@ -46,9 +46,9 @@ func (p *Http) NewServer() Server {
 
 func (s *HttpServer) Start() {
 	// Register services
-	if s.Registrar != nil {
+	if s.Discovery != nil {
 		register := func(key, value interface{}) bool {
-			err := s.Registrar.Register(key.(string), "tcp", s.Hostname, s.Port)
+			err := s.Discovery.Register(key.(string), "tcp", s.Hostname, s.Port)
 			if err == nil {
 				return true
 			}
@@ -78,8 +78,8 @@ func (s *HttpServer) SetOptions(httpOptions any) {
 	s.Options = httpOptions.(HttpOptions)
 }
 
-func (s *HttpServer) SetRegister(d discovery.Driver) {
-	s.Registrar = d
+func (s *HttpServer) SetDiscovery(d discovery.Driver) {
+	s.Discovery = d
 }
 
 func (s *HttpServer) SetRateLimit(r rate.Limit, b int) {

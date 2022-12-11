@@ -7,23 +7,23 @@ import (
 	"reflect"
 )
 
-func NewClient(name string, protocol string, nodes any) (client.Client, error) {
+func NewClient(name string, protocol string, server any) (client.Client, error) {
 	var p client.Protocol
 	var (
-		address   string
-		registrar discovery.Driver
+		address string
+		dc      discovery.Driver
 	)
-	if reflect.TypeOf(nodes).Kind() == reflect.String {
-		address = nodes.(string)
+	if reflect.TypeOf(server).Kind() == reflect.String {
+		address = server.(string)
 	} else {
-		registrar = nodes.(discovery.Driver)
+		dc = server.(discovery.Driver)
 	}
 
 	switch protocol {
 	case "http":
-		p = &client.Http{name, protocol, address, registrar}
+		p = &client.Http{name, protocol, address, dc}
 	case "tcp":
-		p = &client.Tcp{name, protocol, address, registrar}
+		p = &client.Tcp{name, protocol, address, dc}
 	default:
 		return nil, errors.New("The protocol can not be supported")
 	}

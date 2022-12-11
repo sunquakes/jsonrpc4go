@@ -29,7 +29,7 @@ func (i *IntRpc) Add(params *Params, result *Result) error {
 }
 
 func main() {
-	s, _ := jsonrpc4go.NewServer("http", 3232) // the protocol is http
+	s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", 3232) // the protocol is http
 	s.Register(new(IntRpc))
 	s.Start()
 }
@@ -56,8 +56,8 @@ type Result2 struct {
 
 func main() {
 	result := new(Result)
-	c, _ := jsonrpc4go.NewClient("http", "127.0.0.1:3232")
-	err := c.Call("IntRpc/Add", Params{1, 6}, result, false) // The following routes are supported: "int_rpc/Add", "int_rpc.Add", "IntRpc.Add"
+	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232")
+	err := c.Call("Add", Params{1, 6}, result, false)
 	// data sent: {"id":"1604283212", "jsonrpc":"2.0", "method":"IntRpc/Add", "params":{"a":1,"b":6}}
 	// data received: {"id":"1604283212", "jsonrpc":"2.0", "result":7}
 	fmt.Println(err) // nil
@@ -71,9 +71,9 @@ go test -v ./test/...
 ## 🚀 More features
 - TCP protocol
 ```go
-s, _ := jsonrpc4go.NewServer("tcp", 3232) // the protocol is tcp
+s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", 3232) // the protocol is tcp
 
-c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3232") // the protocol is tcp
+c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232") // the protocol is tcp
 ```
 - Hooks (Add the following code before 's.Start()')
 ```go
@@ -105,7 +105,7 @@ c.SetOptions(client.TcpOptions{"aaaaaa", nil}) // Custom package EOF when the pr
 ```go
 // notify
 result2 := new(Result2)
-err2 := c.Call("int_rpc/Add2", Params{1, 6}, result2, true) // or "IntRpc/Add2", "int_rpc.Add2", "IntRpc.Add2"
+err2 := c.Call("Add2", Params{1, 6}, result2, true)
 // data sent: {"jsonrpc":"2.0","method":"IntRpc/Add2","params":{"a":1,"b":6}}
 // data received: {"jsonrpc":"2.0","result":{"c":7}}
 fmt.Println(err2) // nil
@@ -115,9 +115,9 @@ fmt.Println(*result2) // {7}
 ```go
 // batch call
 result3 := new(Result)
-err3 := c.BatchAppend("IntRpc/Add1", Params{1, 6}, result3, false)
+err3 := c.BatchAppend("Add1", Params{1, 6}, result3, false)
 result4 := new(Result)
-err4 := c.BatchAppend("IntRpc/Add", Params{2, 3}, result4, false)
+err4 := c.BatchAppend("Add", Params{2, 3}, result4, false)
 c.BatchCall()
 // data sent: [{"id":"1604283212","jsonrpc":"2.0","method":"IntRpc/Add1","params":{"a":1,"b":6}},{"id":"1604283212","jsonrpc":"2.0","method":"IntRpc/Add","params":{"a":2,"b":3}}]
 // data received: [{"id":"1604283212","jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found","data":null}},{"id":"1604283212","jsonrpc":"2.0","result":5}]
@@ -128,7 +128,23 @@ fmt.Println(*result4) // 5
 ```
 - Client-Side Load-Balancing
 ```go
-c, _ := jsonrpc4go.NewClient("tcp", "127.0.0.1:3232,127.0.0.1:3233,127.0.0.1:3234")
+c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127.0.0.1:3234")
 ```
+
+## Service registration & discovery
+### Consul
+```go
+dc, _ := consul.NewConsul(ts.URL)
+
+// Set in the server
+s, _ := jsonrpc4go.NewServer("tcp", "localhost", 3614)
+s.SetDiscovery(dc)
+s.Register(new(IntRpc))
+s.Start()
+
+// Set in the client
+c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
+```
+
 ## 📄 License
 Source code in `jsonrpc4go` is available under the [Apache-2.0 license](/LICENSE).
