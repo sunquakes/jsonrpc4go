@@ -69,6 +69,7 @@ func TestCheck(t *testing.T) {
 	err = r.Check(&consul.Check{
 		"java_tcp:9999",
 		"java_tcp",
+		"passing",
 		"java_tcp:9999",
 		"",
 		"",

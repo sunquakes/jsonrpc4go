@@ -38,6 +38,7 @@ type RegisterService struct {
 type Check struct {
 	ID        string `json:"ID"`
 	Name      string `json:"Name"`
+	Status    string `json:"Status"`
 	ServiceID string `json:"ServiceID"`
 	HTTP      string `json:"HTTP"`
 	Method    string `json:"Method"`
@@ -93,7 +94,13 @@ func (d *Consul) Register(name string, protocol string, hostname string, port in
 	check := d.URL.Query().Get("check")
 	if check == "true" {
 		interval := d.URL.Query().Get("interval")
+		if interval == "" {
+			interval = "30s"
+		}
 		timeout := d.URL.Query().Get("timeout")
+		if timeout == "" {
+			timeout = "10s"
+		}
 		var http, method, tcp string
 		if protocol == "http" || protocol == "https" {
 			http = fmt.Sprintf("%s://%s:%d", protocol, hostname, port)
@@ -103,6 +110,7 @@ func (d *Consul) Register(name string, protocol string, hostname string, port in
 		check := &Check{
 			ID,
 			name,
+			"passing",
 			ID,
 			http,
 			method,
