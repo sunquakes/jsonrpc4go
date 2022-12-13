@@ -134,7 +134,13 @@ c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127
 ## Service registration & discovery
 ### Consul
 ```go
-dc, _ := consul.NewConsul(ts.URL)
+/**
+ * check: true or false. The switch of the health check.
+ * interval: The interval of the health check. For example: 10s.
+ * timeout: Timeout. For example: 10s.
+ * instanceId: Instance ID. Distinguish the same service in different nodes. For example: 1.
+ */
+dc, _ := consul.NewConsul("http://localhost:8500?check=true&instanceId=1&interval=10s&timeout=10s")
 
 // Set in the server
 s, _ := jsonrpc4go.NewServer("tcp", "localhost", 3614)

@@ -126,11 +126,21 @@ fmt.Println(*result3) // 0
 fmt.Println(*err4) // nil
 fmt.Println(*result4) // 5
 ```
+- 用户端负载均衡
+```go
+c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127.0.0.1:3234")
+```
 
 ## 服务注册和发现
 ### Consul
 ```go
-dc, _ := consul.NewConsul(ts.URL)
+/**
+ * check: true或者false, 开启健康检查
+ * interval: 健康检查周期，例：10s
+ * timeout: 请求超时时间，例：10s
+ * instanceId: 实例ID，同一服务多负载时区分用，例：1
+ */
+dc, _ := consul.NewConsul("http://localhost:8500?check=true&instanceId=1&interval=10s&timeout=10s")
 
 // 在服务端设置 
 s, _ := jsonrpc4go.NewServer("tcp", "localhost", 3614)
@@ -142,10 +152,6 @@ s.Start()
 c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
 ```
 
-- 用户端负载均衡
-```go
-c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127.0.0.1:3234")
-```
 ## 📄 License
 `jsonrpc4go`代码遵守[Apache-2.0 license](/LICENSE)开源协议。
 
