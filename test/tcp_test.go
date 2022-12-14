@@ -333,7 +333,7 @@ func TestDiscovery(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 	go func() {
-		s, _ := jsonrpc4go.NewServer("tcp", "localhost", 3614)
+		s, _ := jsonrpc4go.NewServer("tcp", "", 3614)
 		s.SetDiscovery(dc)
 		s.Register(new(IntRpc))
 		s.Start()

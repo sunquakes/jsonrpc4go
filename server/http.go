@@ -1,15 +1,37 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/discovery"
 	"golang.org/x/time/rate"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"sync"
 )
+
+func GetHostname() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	hostname := ""
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				hostname = ipnet.IP.String()
+				break
+			}
+		}
+	}
+	if hostname == "" {
+		return hostname, errors.New("Failed to get hostname.")
+	}
+	return hostname, nil
+}
 
 type Http struct {
 	Hostname string
@@ -30,6 +52,13 @@ type HttpOptions struct {
 
 func (p *Http) NewServer() Server {
 	options := HttpOptions{}
+	var err error
+	if p.Hostname == "" {
+		p.Hostname, err = GetHostname()
+		if err != nil {
+			log.Panic(err.Error())
+		}
+	}
 	return &HttpServer{
 		p.Hostname,
 		p.Port,

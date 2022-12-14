@@ -36,6 +36,13 @@ func (p *Tcp) NewServer() Server {
 		"\r\n",
 		1024 * 1024 * 2,
 	}
+	var err error
+	if p.Hostname == "" {
+		p.Hostname, err = GetHostname()
+		if err != nil {
+			log.Panic(err.Error())
+		}
+	}
 	return &TcpServer{
 		p.Hostname,
 		p.Port,
