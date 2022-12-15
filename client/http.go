@@ -2,12 +2,16 @@ package client
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/discovery"
 	"io/ioutil"
+	"log"
+	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -23,6 +27,7 @@ type HttpClient struct {
 	Protocol    string
 	Address     string
 	Discovery   discovery.Driver
+	AddressList []string
 	RequestList []*common.SingleRequest
 }
 
@@ -31,13 +36,16 @@ func (p *Http) NewClient() Client {
 }
 
 func NewHttpClient(name string, protocol string, address string, dc discovery.Driver) *HttpClient {
-	return &HttpClient{
+	c := &HttpClient{
 		name,
 		protocol,
 		address,
 		dc,
 		nil,
+		nil,
 	}
+	c.SetAddressList()
+	return c
 }
 
 func (c *HttpClient) SetOptions(httpOptions any) {
@@ -97,8 +105,10 @@ func (c *HttpClient) Call(method string, params any, result any, isNotify bool) 
 }
 
 func (c *HttpClient) handleFunc(b []byte, result any) error {
-	address := c.Address
-	//address := GetAddress(c.AddressList)
+	address, err := c.GetAddress()
+	if err != nil {
+		return err
+	}
 	url := fmt.Sprintf("%s://%s", c.Protocol, address)
 	resp, err := http.Post(url, "application/json", bytes.NewReader(b))
 	if err != nil {
@@ -111,4 +121,32 @@ func (c *HttpClient) handleFunc(b []byte, result any) error {
 	}
 	err = common.GetResult(body, result)
 	return err
+}
+
+func (c *HttpClient) SetAddressList() {
+	var (
+		err error
+	)
+	address := c.Address
+	if c.Discovery != nil {
+		address, err = c.Discovery.Get(c.Name)
+		if err != nil {
+			log.Panic(err.Error())
+		}
+	}
+	addressList := strings.Split(address, ",")
+	c.AddressList = addressList
+}
+
+func (c *HttpClient) GetAddress() (string, error) {
+	size := len(c.AddressList)
+	if size == 0 {
+		c.SetAddressList()
+	}
+	size = len(c.AddressList)
+	if size == 0 {
+		return "", errors.New("Fail to get service url.")
+	}
+	n := rand.Intn(size)
+	return c.AddressList[n], nil
 }

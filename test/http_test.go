@@ -1,8 +1,12 @@
 package test
 
 import (
+	"fmt"
 	"github.com/sunquakes/jsonrpc4go"
 	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/discovery/consul"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -115,5 +119,31 @@ func TestHttpRateLimit(t *testing.T) {
 	err = c.Call("Add", &params, result, false)
 	if err != nil {
 		t.Errorf("Error expected be %s, but %s got", "nil", err.Error())
+	}
+}
+
+func TestHttpDiscovery(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `[{"AggregatedStatus":"passing","Service":{"ID":"IntRpc:3615","Service":"IntRpc","Tags":[],"Meta":{},"Port":3615,"Address":"127.0.0.1","TaggedAddresses":{"lan_ipv4":{"Address":"127.0.0.1","Port":3615},"wan_ipv4":{"Address":"127.0.0.1","Port":3615}},"Weights":{"Passing":1,"Warning":1},"EnableTagOverride":false,"Datacenter":"dc1"},"Checks":[{"Node":"1ae846e40d15","CheckID":"service:IntRpc:3615","Name":"Service 'IntRpc' check","Status":"passing","Notes":"","Output":"HTTP GET http://127.0.0.1:3615: 200 OK Output: ","ServiceID":"IntRpc:3615","ServiceName":"IntRpc","ServiceTags":null,"Type":"","ExposedPort":0,"Definition":{"Interval":"0s","Timeout":"0s","DeregisterCriticalServiceAfter":"0s","HTTP":"","Header":null,"Method":"","Body":"","TLSServerName":"","TLSSkipVerify":false,"TCP":"","UDP":"","GRPC":"","GRPCUseTLS":false},"CreateIndex":0,"ModifyIndex":0}]}]`)
+	}))
+	dc, err := consul.NewConsul(ts.URL)
+	// dc, err := consul.NewConsul("http://localhost:8500?check=false&instanceId=1&interval=10s")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	go func() {
+		s, _ := jsonrpc4go.NewServer("http", "", 3615)
+		s.SetDiscovery(dc)
+		s.Register(new(IntRpc))
+		s.Start()
+	}()
+	time.Sleep(time.Duration(2) * time.Second)
+
+	c, _ := jsonrpc4go.NewClient("IntRpc", "http", dc)
+	params := Params{10, 11}
+	result := new(Result)
+	c.Call("Add", &params, result, false)
+	if *result != 21 {
+		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 21, *result)
 	}
 }
