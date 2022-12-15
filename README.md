@@ -142,7 +142,7 @@ c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127
  */
 dc, _ := consul.NewConsul("http://localhost:8500?check=true&instanceId=1&interval=10s&timeout=10s")
 
-// Set in the server
+// Set in the server, if the default node ip is used, the second parameter can be set "".
 s, _ := jsonrpc4go.NewServer("tcp", "localhost", 3614)
 s.SetDiscovery(dc)
 s.Register(new(IntRpc))
