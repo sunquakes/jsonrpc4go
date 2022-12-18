@@ -7,7 +7,6 @@ import (
 	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/discovery"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -131,7 +130,7 @@ func (c *HttpClient) SetAddressList() {
 	if c.Discovery != nil {
 		address, err = c.Discovery.Get(c.Name)
 		if err != nil {
-			log.Panic(err.Error())
+			common.Debug(err.Error())
 		}
 	}
 	addressList := strings.Split(address, ",")
