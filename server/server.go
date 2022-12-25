@@ -13,7 +13,7 @@ type Server interface {
 	SetBeforeFunc(func(id any, method string, params any) error)
 	SetAfterFunc(func(id any, method string, result any) error)
 	SetOptions(any)
-	SetDiscovery(d discovery.Driver)
+	SetDiscovery(d discovery.Driver, hostname string)
 	SetRateLimit(rate.Limit, int)
 	Start()
 	Register(s any)

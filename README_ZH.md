@@ -29,7 +29,7 @@ func (i *IntRpc) Add(params *Params, result *Result) error {
 }
 
 func main() {
-	s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", 3232) // http协议
+	s, _ := jsonrpc4go.NewServer("http", 3232) // http协议
 	s.Register(new(IntRpc))
 	s.Start()
 }
@@ -71,7 +71,7 @@ go test -v ./test/...
 ## 🚀 更多特性
 - tcp协议
 ```go
-s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", 3232) // tcp协议
+s, _ := jsonrpc4go.NewServer("tcp", 3232) // tcp协议
 
 c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232") // tcp协议
 ```
@@ -142,9 +142,10 @@ c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127
  */
 dc, _ := consul.NewConsul("http://localhost:8500?check=true&instanceId=1&interval=10s&timeout=10s")
 
-// 在服务端设置，如果使用默认的节点ip，第二个参数可配置为"" 
-s, _ := jsonrpc4go.NewServer("tcp", "localhost", 3614)
-s.SetDiscovery(dc)
+// 在服务端设置，如果使用默认的节点ip 
+s, _ := jsonrpc4go.NewServer("tcp", 3614)
+// hostname如果为""，则会自动获取当前节点ip注册
+s.SetDiscovery(dc, "127.0.0.1")
 s.Register(new(IntRpc))
 s.Start()
 

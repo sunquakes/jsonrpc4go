@@ -13,8 +13,7 @@ import (
 )
 
 type Tcp struct {
-	Hostname string
-	Port     int
+	Port int
 }
 
 type TcpServer struct {
@@ -36,15 +35,8 @@ func (p *Tcp) NewServer() Server {
 		"\r\n",
 		1024 * 1024 * 2,
 	}
-	var err error
-	if p.Hostname == "" {
-		p.Hostname, err = GetHostname()
-		if err != nil {
-			log.Panic(err.Error())
-		}
-	}
 	return &TcpServer{
-		p.Hostname,
+		"",
 		p.Port,
 		common.Server{
 			sync.Map{},
@@ -98,8 +90,16 @@ func (s *TcpServer) SetOptions(tcpOptions any) {
 	s.Options = tcpOptions.(TcpOptions)
 }
 
-func (s *TcpServer) SetDiscovery(d discovery.Driver) {
+func (s *TcpServer) SetDiscovery(d discovery.Driver, hostname string) {
 	s.Discovery = d
+	s.Hostname = hostname
+	var err error
+	if s.Hostname == "" {
+		s.Hostname, err = GetHostname()
+		if err != nil {
+			common.Debug(err.Error())
+		}
+	}
 }
 
 func (s *TcpServer) SetRateLimit(r rate.Limit, b int) {

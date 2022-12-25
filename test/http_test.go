@@ -27,7 +27,7 @@ func (i *IntRpc) Add(params *Params, result *Result) error {
 }
 
 func TestHttpCall(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("http", "localhost", 3201)
+	s, _ := jsonrpc4go.NewServer("http", 3201)
 	s.Register(new(IntRpc))
 	go func() {
 		s.Start()
@@ -43,7 +43,7 @@ func TestHttpCall(t *testing.T) {
 }
 
 func TestHttpCallMethod(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("http", "localhost", 3202)
+	s, _ := jsonrpc4go.NewServer("http", 3202)
 	s.Register(new(IntRpc))
 	go func() {
 		s.Start()
@@ -59,7 +59,7 @@ func TestHttpCallMethod(t *testing.T) {
 }
 
 func TestHttpNotifyCall(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("http", "localhost", 3203)
+	s, _ := jsonrpc4go.NewServer("http", 3203)
 	s.Register(new(IntRpc))
 	go func() {
 		s.Start()
@@ -75,7 +75,7 @@ func TestHttpNotifyCall(t *testing.T) {
 }
 
 func TestHttpBatchCall(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("http", "localhost", 3204)
+	s, _ := jsonrpc4go.NewServer("http", 3204)
 	s.Register(new(IntRpc))
 	go func() {
 		s.Start()
@@ -98,7 +98,7 @@ func TestHttpBatchCall(t *testing.T) {
 
 func TestHttpRateLimit(t *testing.T) {
 	params := Params{1, 2}
-	s, _ := jsonrpc4go.NewServer("http", "localhost", 3205)
+	s, _ := jsonrpc4go.NewServer("http", 3205)
 	s.Register(new(IntRpc))
 	s.SetRateLimit(0.5, 1)
 	go func() {
@@ -132,8 +132,8 @@ func TestHttpDiscovery(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 	go func() {
-		s, _ := jsonrpc4go.NewServer("http", "", 3615)
-		s.SetDiscovery(dc)
+		s, _ := jsonrpc4go.NewServer("http", 3615)
+		s.SetDiscovery(dc, "")
 		s.Register(new(IntRpc))
 		s.Start()
 	}()

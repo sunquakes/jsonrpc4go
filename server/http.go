@@ -34,8 +34,7 @@ func GetHostname() (string, error) {
 }
 
 type Http struct {
-	Hostname string
-	Port     int
+	Port int
 }
 
 type HttpServer struct {
@@ -52,15 +51,8 @@ type HttpOptions struct {
 
 func (p *Http) NewServer() Server {
 	options := HttpOptions{}
-	var err error
-	if p.Hostname == "" {
-		p.Hostname, err = GetHostname()
-		if err != nil {
-			log.Panic(err.Error())
-		}
-	}
 	return &HttpServer{
-		p.Hostname,
+		"",
 		p.Port,
 		common.Server{
 			sync.Map{},
@@ -107,8 +99,16 @@ func (s *HttpServer) SetOptions(httpOptions any) {
 	s.Options = httpOptions.(HttpOptions)
 }
 
-func (s *HttpServer) SetDiscovery(d discovery.Driver) {
+func (s *HttpServer) SetDiscovery(d discovery.Driver, hostname string) {
 	s.Discovery = d
+	s.Hostname = hostname
+	var err error
+	if s.Hostname == "" {
+		s.Hostname, err = GetHostname()
+		if err != nil {
+			common.Debug(err.Error())
+		}
+	}
 }
 
 func (s *HttpServer) SetRateLimit(r rate.Limit, b int) {

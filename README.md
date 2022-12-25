@@ -29,7 +29,7 @@ func (i *IntRpc) Add(params *Params, result *Result) error {
 }
 
 func main() {
-	s, _ := jsonrpc4go.NewServer("http", "127.0.0.1", 3232) // the protocol is http
+	s, _ := jsonrpc4go.NewServer("http", 3232) // the protocol is http
 	s.Register(new(IntRpc))
 	s.Start()
 }
@@ -71,7 +71,7 @@ go test -v ./test/...
 ## 🚀 More features
 - TCP protocol
 ```go
-s, _ := jsonrpc4go.NewServer("tcp", "127.0.0.1", 3232) // the protocol is tcp
+s, _ := jsonrpc4go.NewServer("tcp", 3232) // the protocol is tcp
 
 c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232") // the protocol is tcp
 ```
@@ -142,9 +142,10 @@ c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127
  */
 dc, _ := consul.NewConsul("http://localhost:8500?check=true&instanceId=1&interval=10s&timeout=10s")
 
-// Set in the server, if the default node ip is used, the second parameter can be set "".
-s, _ := jsonrpc4go.NewServer("tcp", "localhost", 3614)
-s.SetDiscovery(dc)
+// Set in the server.
+s, _ := jsonrpc4go.NewServer("tcp", 3614)
+// If the default node ip is used, the second parameter can be set ""
+s.SetDiscovery(dc, "127.0.0.1")
 s.Register(new(IntRpc))
 s.Start()
 
