@@ -122,7 +122,7 @@ func TestHttpRateLimit(t *testing.T) {
 	}
 }
 
-func TestHttpDiscovery(t *testing.T) {
+func TestHttpConsul(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `[{"AggregatedStatus":"passing","Service":{"ID":"IntRpc:3615","Service":"IntRpc","Tags":[],"Meta":{},"Port":3615,"Address":"127.0.0.1","TaggedAddresses":{"lan_ipv4":{"Address":"127.0.0.1","Port":3615},"wan_ipv4":{"Address":"127.0.0.1","Port":3615}},"Weights":{"Passing":1,"Warning":1},"EnableTagOverride":false,"Datacenter":"dc1"},"Checks":[{"Node":"1ae846e40d15","CheckID":"service:IntRpc:3615","Name":"Service 'IntRpc' check","Status":"passing","Notes":"","Output":"HTTP GET http://127.0.0.1:3615: 200 OK Output: ","ServiceID":"IntRpc:3615","ServiceName":"IntRpc","ServiceTags":null,"Type":"","ExposedPort":0,"Definition":{"Interval":"0s","Timeout":"0s","DeregisterCriticalServiceAfter":"0s","HTTP":"","Header":null,"Method":"","Body":"","TLSServerName":"","TLSSkipVerify":false,"TCP":"","UDP":"","GRPC":"","GRPCUseTLS":false},"CreateIndex":0,"ModifyIndex":0}]}]`)
 	}))

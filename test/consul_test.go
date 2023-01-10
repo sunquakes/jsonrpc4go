@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestRequestURL(t *testing.T) {
+func TestConsulRequestURL(t *testing.T) {
 	URL, err := consul.GetURL("http://localhost:8500", "/agent/service/test", "123456")
 	if err != nil {
 		t.Error(err)
@@ -20,7 +20,7 @@ func TestRequestURL(t *testing.T) {
 	}
 }
 
-func TestGet(t *testing.T) {
+func TestConsulGet(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `[{"AggregatedStatus":"passing","Service":{"ID":"java_http-2:3202","Service":"java_http","Tags":[],"Meta":{},"Port":3202,"Address":"10.222.1.164","TaggedAddresses":{"lan_ipv4":{"Address":"10.222.1.164","Port":3202},"wan_ipv4":{"Address":"10.222.1.164","Port":3202}},"Weights":{"Passing":1,"Warning":1},"EnableTagOverride":false,"Datacenter":"dc1"},"Checks":[{"Node":"1ae846e40d15","CheckID":"service:java_http-2:3202","Name":"Service 'java_http' check","Status":"passing","Notes":"","Output":"HTTP GET http://10.222.1.164:3202: 200 OK Output: ","ServiceID":"java_http-2:3202","ServiceName":"java_http","ServiceTags":null,"Type":"","ExposedPort":0,"Definition":{"Interval":"0s","Timeout":"0s","DeregisterCriticalServiceAfter":"0s","HTTP":"","Header":null,"Method":"","Body":"","TLSServerName":"","TLSSkipVerify":false,"TCP":"","UDP":"","GRPC":"","GRPCUseTLS":false},"CreateIndex":0,"ModifyIndex":0}]}]`)
 	}))
@@ -38,7 +38,7 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestRegister(t *testing.T) {
+func TestConsulRegister(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, ``)
 	}))
@@ -53,7 +53,7 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-func TestCheck(t *testing.T) {
+func TestConsulCheck(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, ``)
 	}))
