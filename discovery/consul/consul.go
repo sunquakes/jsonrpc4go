@@ -24,7 +24,7 @@ type HealthService struct {
 type Service struct {
 	ID      string `json:"ID"`
 	Service string `json:"Service"`
-	Port    int    `json:"Port"`
+	Port    int    `json:"port"`
 	Address string `json:"Address"`
 }
 
