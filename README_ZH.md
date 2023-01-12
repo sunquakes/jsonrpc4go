@@ -152,6 +152,20 @@ s.Start()
 // 在客户端设置
 c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
 ```
+### Nacos
+```go
+dc, _ := nacos.NewNacos("http://127.0.0.1:8849")
+
+// 在服务端设置，如果使用默认的节点ip 
+s, _ := jsonrpc4go.NewServer("tcp", 3616)
+// hostname如果为""，则会自动获取当前节点ip注册
+s.SetDiscovery(dc, "127.0.0.1")
+s.Register(new(IntRpc))
+s.Start()
+
+// 在客户端设置
+c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
+```
 
 ## 📄 License
 `jsonrpc4go`代码遵守[Apache-2.0 license](/LICENSE)开源协议。

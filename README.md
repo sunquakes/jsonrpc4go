@@ -152,6 +152,20 @@ s.Start()
 // Set in the client
 c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
 ```
+### Nacos
+```go
+dc, _ := nacos.NewNacos("http://127.0.0.1:8849")
+
+// Set in the server.
+s, _ := jsonrpc4go.NewServer("tcp", 3616)
+// If the default node ip is used, the second parameter can be set ""
+s.SetDiscovery(dc, "127.0.0.1")
+s.Register(new(IntRpc))
+s.Start()
+
+// Set in the client
+c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
+```
 
 ## 📄 License
 Source code in `jsonrpc4go` is available under the [Apache-2.0 license](/LICENSE).
