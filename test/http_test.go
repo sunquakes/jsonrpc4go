@@ -5,6 +5,7 @@ import (
 	"github.com/sunquakes/jsonrpc4go"
 	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/discovery/consul"
+	"github.com/sunquakes/jsonrpc4go/discovery/nacos"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -133,6 +134,32 @@ func TestHttpConsul(t *testing.T) {
 	}
 	go func() {
 		s, _ := jsonrpc4go.NewServer("http", 3615)
+		s.SetDiscovery(dc, "")
+		s.Register(new(IntRpc))
+		s.Start()
+	}()
+	time.Sleep(time.Duration(2) * time.Second)
+
+	c, _ := jsonrpc4go.NewClient("IntRpc", "http", dc)
+	params := Params{10, 11}
+	result := new(Result)
+	c.Call("Add", &params, result, false)
+	if *result != 21 {
+		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 21, *result)
+	}
+}
+
+func TestHttpNacos(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"name":"DEFAULT_GROUP@@java_tcp","groupName":"DEFAULT_GROUP","clusters":"","cacheMillis":10000,"hosts":[{"instanceId":"127.0.0.1#3617#DEFAULT#DEFAULT_GROUP@@java_tcp","ip":"127.0.0.1","port":3617,"weight":1.0,"healthy":true,"enabled":true,"ephemeral":true,"clusterName":"DEFAULT","serviceName":"DEFAULT_GROUP@@java_tcp","metadata":{},"instanceHeartBeatInterval":5000,"instanceHeartBeatTimeOut":15000,"ipDeleteTimeout":30000,"instanceIdGenerator":"simple"}],"lastRefTime":1673444367069,"checksum":"","allIPs":false,"reachProtectionThreshold":false,"valid":true}`)
+	}))
+	dc, err := nacos.NewNacos(ts.URL)
+	// dc, err := nacos.NewNacos("http://localhost:8849")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	go func() {
+		s, _ := jsonrpc4go.NewServer("http", 3617)
 		s.SetDiscovery(dc, "")
 		s.Register(new(IntRpc))
 		s.Start()

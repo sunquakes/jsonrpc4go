@@ -351,11 +351,11 @@ func TestTcpConsul(t *testing.T) {
 }
 
 func TestTcpNacos(t *testing.T) {
-	// ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 	fmt.Fprintln(w, `[{"AggregatedStatus":"passing","Service":{"ID":"IntRpc:3614","Service":"IntRpc","Tags":[],"Meta":{},"Port":3614,"Address":"127.0.0.1","TaggedAddresses":{"lan_ipv4":{"Address":"127.0.0.1","Port":3614},"wan_ipv4":{"Address":"127.0.0.1","Port":3614}},"Weights":{"Passing":1,"Warning":1},"EnableTagOverride":false,"Datacenter":"dc1"},"Checks":[{"Node":"1ae846e40d15","CheckID":"service:IntRpc:3614","Name":"Service 'IntRpc' check","Status":"passing","Notes":"","Output":"HTTP GET http://127.0.0.1:3614: 200 OK Output: ","ServiceID":"IntRpc:3614","ServiceName":"IntRpc","ServiceTags":null,"Type":"","ExposedPort":0,"Definition":{"Interval":"0s","Timeout":"0s","DeregisterCriticalServiceAfter":"0s","HTTP":"","Header":null,"Method":"","Body":"","TLSServerName":"","TLSSkipVerify":false,"TCP":"","UDP":"","GRPC":"","GRPCUseTLS":false},"CreateIndex":0,"ModifyIndex":0}]}]`)
-	// }))
-	// dc, err := consul.NewConsul(ts.URL)
-	dc, err := nacos.NewNacos("http://localhost:8849?instanceId=1")
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"name":"DEFAULT_GROUP@@java_tcp","groupName":"DEFAULT_GROUP","clusters":"","cacheMillis":10000,"hosts":[{"instanceId":"127.0.0.1#3616#DEFAULT#DEFAULT_GROUP@@java_tcp","ip":"127.0.0.1","port":3616,"weight":1.0, "healthy":true,"enabled":true,"ephemeral":true,"clusterName":"DEFAULT","serviceName":"DEFAULT_GROUP@@java_tcp","metadata":{},"instanceHeartBeatInterval":5000,"instanceHeartBeatTimeOut":15000,"ipDeleteTimeout":30000, "instanceIdGenerator":"simple"}],"lastRefTime":1673444367069,"checksum":"","allIPs":false,"reachProtectionThreshold":false,"valid":true}`)
+	}))
+	dc, err := nacos.NewNacos(ts.URL)
+	// dc, err := nacos.NewNacos("http://localhost:8849")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -367,11 +367,11 @@ func TestTcpNacos(t *testing.T) {
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
 
-	// c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
-	// params := Params{10, 11}
-	// result := new(Result)
-	// c.Call("Add", &params, result, false)
-	// if *result != 21 {
-	// 	t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 21, *result)
-	// }
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
+	params := Params{10, 11}
+	result := new(Result)
+	c.Call("Add", &params, result, false)
+	if *result != 21 {
+		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 21, *result)
+	}
 }
