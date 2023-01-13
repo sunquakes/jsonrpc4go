@@ -38,11 +38,20 @@ func NewNacos(rawURL string) (discovery.Driver, error) {
 }
 
 func (d *Nacos) Register(name string, protocol string, hostname string, port int) error {
-	// Get the instanceId from url
 	query := make(map[string]string)
+	// Get the instanceId from url
 	query["serviceName"] = name
 	query["ip"] = hostname
 	query["port"] = strconv.Itoa(port)
+	queries := d.URL.Query()
+	if queries != nil {
+		for k, v := range queries {
+			if len(v) > 0 {
+				query[k] = v[0]
+			}
+		}
+	}
+	query["ephemeral"] = "false"
 	URL, err := GetURL(d.URL.Redacted(), "/nacos/v1/ns/instance", query)
 	if err != nil {
 		return err

@@ -355,7 +355,7 @@ func TestTcpNacos(t *testing.T) {
 		fmt.Fprintln(w, `{"name":"DEFAULT_GROUP@@java_tcp","groupName":"DEFAULT_GROUP","clusters":"","cacheMillis":10000,"hosts":[{"instanceId":"127.0.0.1#3616#DEFAULT#DEFAULT_GROUP@@java_tcp","ip":"127.0.0.1","port":3616,"weight":1.0, "healthy":true,"enabled":true,"ephemeral":true,"clusterName":"DEFAULT","serviceName":"DEFAULT_GROUP@@java_tcp","metadata":{},"instanceHeartBeatInterval":5000,"instanceHeartBeatTimeOut":15000,"ipDeleteTimeout":30000, "instanceIdGenerator":"simple"}],"lastRefTime":1673444367069,"checksum":"","allIPs":false,"reachProtectionThreshold":false,"valid":true}`)
 	}))
 	dc, err := nacos.NewNacos(ts.URL)
-	// dc, err := nacos.NewNacos("http://localhost:8849")
+	// dc, err := nacos.NewNacos("http://localhost:8849?namespaceId=79f14f4e-f5e8-46b6-90b9-0ad105b8626d&groupName=test1")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
