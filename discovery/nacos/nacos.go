@@ -96,7 +96,7 @@ func (d *Nacos) Get(name string) (string, error) {
 	}
 	var gr GetResp
 	json.Unmarshal(body, &gr)
-	ua := make([]string, len(gr.Hosts))
+	ua := make([]string, 0)
 	for _, v := range gr.Hosts {
 		if !v.Healthy {
 			continue
