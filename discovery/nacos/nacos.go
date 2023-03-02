@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/sunquakes/jsonrpc4go/discovery"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -84,7 +83,7 @@ func (d *Nacos) Register(name string, protocol string, hostname string, port int
 		}
 		return errors.New(string(body))
 	}
-	if d.Ephemeral == "false" {
+	if d.Ephemeral == "true" {
 		if len(d.HeartbeatList) == 0 {
 			d.Heartbeat()
 		}
@@ -124,7 +123,7 @@ func (d *Nacos) Get(name string) (string, error) {
 	if len(ua) == 0 {
 		return "", errors.New("Unable to get service url.")
 	}
-	return strings.Join(ua, ",")[1:], err
+	return strings.Join(ua, ","), err
 }
 
 func (d *Nacos) Beat(name string, hostname string, port int) error {
@@ -168,10 +167,11 @@ func (d *Nacos) Beat(name string, hostname string, port int) error {
 func (d *Nacos) Heartbeat() error {
 	go func() {
 		for {
-			for _, service := range d.HeartbeatList {
+			for i, service := range d.HeartbeatList {
 				err := d.Beat(service.InstanceId, service.Ip, service.Port)
 				if err != nil {
-					log.Panic(err)
+					// remove heartbeat
+					d.HeartbeatList = append(d.HeartbeatList[:i], d.HeartbeatList[i+1:]...)
 				}
 			}
 			time.Sleep(time.Second * HEARTBEAT_INTERVAL)

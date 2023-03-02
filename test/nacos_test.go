@@ -60,17 +60,21 @@ func TestNacosGet(t *testing.T) {
 
 func TestNacosBeat(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `ok`)
+		if r.Method == "PUT" {
+			fmt.Fprintln(w, `{"clientBeatInterval":5000,"code":10200,"lightBeatEnabled":true}`)
+		} else {
+			fmt.Fprintln(w, `ok`)
+		}
+		return
 	}))
 	defer ts.Close()
 	r, err := nacos.NewNacos(ts.URL)
-	//r, err := nacos.NewNacos("http://localhost:8849")
+	// r, err := nacos.NewNacos("http://localhost:8849")
 	if err != nil {
 		t.Error(err)
 	}
-	err = r.Register("java_tcp", "tcp", "192.168.1.15", 3232)
+	err = r.Register("java_tcp", "tcp", "192.168.1.15", 3233)
 	if err != nil {
 		t.Error(err)
 	}
-	select {}
 }

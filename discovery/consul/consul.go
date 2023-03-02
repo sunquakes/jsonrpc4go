@@ -142,11 +142,11 @@ func (d *Consul) Get(name string) (string, error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	var hss []HealthService
 	json.Unmarshal(body, &hss)
-	ua := make([]string, len(hss))
+	ua := make([]string, 0)
 	for _, v := range hss {
 		ua = append(ua, fmt.Sprintf("%s:%d", v.Service.Address, v.Service.Port))
 	}
-	return strings.Join(ua, ",")[1:], err
+	return strings.Join(ua, ","), err
 }
 
 func (d *Consul) Check(check *Check) error {
