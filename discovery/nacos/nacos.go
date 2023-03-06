@@ -15,12 +15,14 @@ import (
 
 const IS_EPHEMERAL = "true"
 const HEARTBEAT_INTERVAL = 5
+const HEARTBEAT_RETRY_MAX = 3
 
 type Nacos struct {
-	URL           *url.URL
-	Token         string
-	Ephemeral     string
-	HeartbeatList []Service
+	URL            *url.URL
+	Token          string
+	Ephemeral      string
+	HeartbeatList  []Service
+	HeartbeatRetry map[string]int
 }
 
 type GetResp struct {
@@ -44,7 +46,7 @@ func NewNacos(rawURL string) (discovery.Driver, error) {
 		ephemeral = URL.Query().Get("ephemeral")
 
 	}
-	nacos := &Nacos{URL, URL.Query().Get("token"), ephemeral, make([]Service, 0)}
+	nacos := &Nacos{URL, URL.Query().Get("token"), ephemeral, make([]Service, 0), make(map[string]int)}
 	return nacos, err
 }
 
@@ -170,8 +172,17 @@ func (d *Nacos) Heartbeat() error {
 			for i, service := range d.HeartbeatList {
 				err := d.Beat(service.InstanceId, service.Ip, service.Port)
 				if err != nil {
-					// remove heartbeat
-					d.HeartbeatList = append(d.HeartbeatList[:i], d.HeartbeatList[i+1:]...)
+					key := fmt.Sprintf("%s-%d", service.Ip, service.Port)
+					if times, ok := d.HeartbeatRetry[key]; ok {
+						if times >= HEARTBEAT_RETRY_MAX {
+							// remove heartbeat
+							d.HeartbeatList = append(d.HeartbeatList[:i], d.HeartbeatList[i+1:]...)
+						} else {
+							d.HeartbeatRetry[key]++
+						}
+					} else {
+						d.HeartbeatRetry[key] = 1
+					}
 				}
 			}
 			time.Sleep(time.Second * HEARTBEAT_INTERVAL)
