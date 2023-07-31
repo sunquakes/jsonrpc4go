@@ -27,6 +27,12 @@ func (i *IntRpc) Add(params *Params, result *Result) error {
 	return nil
 }
 
+func (i *IntRpc) Sub(params *Params, result *int) error {
+	a := params.A - params.B
+	*result = any(a).(int)
+	return nil
+}
+
 func TestHttpCall(t *testing.T) {
 	s, _ := jsonrpc4go.NewServer("http", 3201)
 	s.Register(new(IntRpc))
@@ -172,5 +178,21 @@ func TestHttpNacos(t *testing.T) {
 	c.Call("Add", &params, result, false)
 	if *result != 21 {
 		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 21, *result)
+	}
+}
+
+func TestDataType(t *testing.T) {
+	s, _ := jsonrpc4go.NewServer("http", 3618)
+	s.Register(new(IntRpc))
+	go func() {
+		s.Start()
+	}()
+	<-s.GetEvent()
+	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3618")
+	params := Params{2, 1}
+	result := new(int)
+	_ = c.Call("Sub", &params, result, false)
+	if *result != 1 {
+		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 1, *result)
 	}
 }
