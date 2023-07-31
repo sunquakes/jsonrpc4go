@@ -9,19 +9,17 @@ type Params struct {
 	B int `json:"b"`
 }
 
-type Result = int
-
-type Result2 struct {
+type Result struct {
 	C int `json:"c"`
 }
 
-func (i *IntRpc) Add(params *Params, result *Result) error {
+func (i *IntRpc) Add(params *Params, result *int) error {
 	a := params.A + params.B
-	*result = any(a).(Result)
+	*result = any(a).(int)
 	return nil
 }
 
-func (i *IntRpc) Add2(params *Params, result *Result2) error {
+func (i *IntRpc) Add2(params *Params, result *Result) error {
 	result.C = params.A + params.B
 	return nil
 }
