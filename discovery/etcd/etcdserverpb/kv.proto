@@ -6,23 +6,28 @@ option go_package = "discovery/etcd/etcdserverpb";
 
 service KV {
   rpc Put(PutRequest) returns (PutResponse);
-  rpc Get(GetRequest) returns (GetResponse);
+  rpc Range(RangeRequest) returns (RangeResponse);
 }
 
 message PutRequest {
   string key = 1;
-  string value = 2;
+  bytes value = 2;
   int64 lease = 3;
 }
 
 message PutResponse {
 }
 
-message GetRequest {
+message RangeRequest {
   string key = 1;
 }
 
-message GetResponse {
+message RangeResponse {
+  repeated KeyValue kvs = 2;
+}
+
+message KeyValue {
   string key = 1;
-  string value = 2;
+  bytes value = 5;
+  int64 lease = 6;
 }

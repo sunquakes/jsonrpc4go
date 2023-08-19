@@ -26,7 +26,7 @@ type PutRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	Lease int64  `protobuf:"varint,3,opt,name=lease,proto3" json:"lease,omitempty"`
 }
 
@@ -69,11 +69,11 @@ func (x *PutRequest) GetKey() string {
 	return ""
 }
 
-func (x *PutRequest) GetValue() string {
+func (x *PutRequest) GetValue() []byte {
 	if x != nil {
 		return x.Value
 	}
-	return ""
+	return nil
 }
 
 func (x *PutRequest) GetLease() int64 {
@@ -121,7 +121,7 @@ func (*PutResponse) Descriptor() ([]byte, []int) {
 	return file_discovery_etcd_etcdserverpb_kv_proto_rawDescGZIP(), []int{1}
 }
 
-type GetRequest struct {
+type RangeRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -129,8 +129,8 @@ type GetRequest struct {
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 }
 
-func (x *GetRequest) Reset() {
-	*x = GetRequest{}
+func (x *RangeRequest) Reset() {
+	*x = RangeRequest{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_discovery_etcd_etcdserverpb_kv_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -138,13 +138,13 @@ func (x *GetRequest) Reset() {
 	}
 }
 
-func (x *GetRequest) String() string {
+func (x *RangeRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetRequest) ProtoMessage() {}
+func (*RangeRequest) ProtoMessage() {}
 
-func (x *GetRequest) ProtoReflect() protoreflect.Message {
+func (x *RangeRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_discovery_etcd_etcdserverpb_kv_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -156,29 +156,28 @@ func (x *GetRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetRequest.ProtoReflect.Descriptor instead.
-func (*GetRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use RangeRequest.ProtoReflect.Descriptor instead.
+func (*RangeRequest) Descriptor() ([]byte, []int) {
 	return file_discovery_etcd_etcdserverpb_kv_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *GetRequest) GetKey() string {
+func (x *RangeRequest) GetKey() string {
 	if x != nil {
 		return x.Key
 	}
 	return ""
 }
 
-type GetResponse struct {
+type RangeResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Kvs []*KeyValue `protobuf:"bytes,2,rep,name=kvs,proto3" json:"kvs,omitempty"`
 }
 
-func (x *GetResponse) Reset() {
-	*x = GetResponse{}
+func (x *RangeResponse) Reset() {
+	*x = RangeResponse{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_discovery_etcd_etcdserverpb_kv_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -186,13 +185,13 @@ func (x *GetResponse) Reset() {
 	}
 }
 
-func (x *GetResponse) String() string {
+func (x *RangeResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetResponse) ProtoMessage() {}
+func (*RangeResponse) ProtoMessage() {}
 
-func (x *GetResponse) ProtoReflect() protoreflect.Message {
+func (x *RangeResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_discovery_etcd_etcdserverpb_kv_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -204,23 +203,79 @@ func (x *GetResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetResponse.ProtoReflect.Descriptor instead.
-func (*GetResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use RangeResponse.ProtoReflect.Descriptor instead.
+func (*RangeResponse) Descriptor() ([]byte, []int) {
 	return file_discovery_etcd_etcdserverpb_kv_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *GetResponse) GetKey() string {
+func (x *RangeResponse) GetKvs() []*KeyValue {
+	if x != nil {
+		return x.Kvs
+	}
+	return nil
+}
+
+type KeyValue struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value []byte `protobuf:"bytes,5,opt,name=value,proto3" json:"value,omitempty"`
+	Lease int64  `protobuf:"varint,6,opt,name=lease,proto3" json:"lease,omitempty"`
+}
+
+func (x *KeyValue) Reset() {
+	*x = KeyValue{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_discovery_etcd_etcdserverpb_kv_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *KeyValue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeyValue) ProtoMessage() {}
+
+func (x *KeyValue) ProtoReflect() protoreflect.Message {
+	mi := &file_discovery_etcd_etcdserverpb_kv_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeyValue.ProtoReflect.Descriptor instead.
+func (*KeyValue) Descriptor() ([]byte, []int) {
+	return file_discovery_etcd_etcdserverpb_kv_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KeyValue) GetKey() string {
 	if x != nil {
 		return x.Key
 	}
 	return ""
 }
 
-func (x *GetResponse) GetValue() string {
+func (x *KeyValue) GetValue() []byte {
 	if x != nil {
 		return x.Value
 	}
-	return ""
+	return nil
+}
+
+func (x *KeyValue) GetLease() int64 {
+	if x != nil {
+		return x.Lease
+	}
+	return 0
 }
 
 var File_discovery_etcd_etcdserverpb_kv_proto protoreflect.FileDescriptor
@@ -232,21 +287,31 @@ var file_discovery_etcd_etcdserverpb_kv_proto_rawDesc = []byte{
 	0x65, 0x72, 0x70, 0x62, 0x22, 0x4a, 0x0a, 0x0a, 0x50, 0x75, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65,
 	0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
 	0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x6c, 0x65,
+	0x01, 0x28, 0x0c, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x6c, 0x65,
 	0x61, 0x73, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x05, 0x6c, 0x65, 0x61, 0x73, 0x65,
 	0x22, 0x0d, 0x0a, 0x0b, 0x50, 0x75, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22,
-	0x1e, 0x0a, 0x0a, 0x47, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a,
-	0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x22,
-	0x35, 0x0a, 0x0b, 0x47, 0x65, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x10,
-	0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79,
-	0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x32, 0x40, 0x0a, 0x02, 0x4b, 0x56, 0x12, 0x3a, 0x0a, 0x03,
-	0x50, 0x75, 0x74, 0x12, 0x18, 0x2e, 0x65, 0x74, 0x63, 0x64, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72,
-	0x70, 0x62, 0x2e, 0x50, 0x75, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e,
-	0x65, 0x74, 0x63, 0x64, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x70, 0x62, 0x2e, 0x50, 0x75, 0x74,
-	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x1d, 0x5a, 0x1b, 0x64, 0x69, 0x73, 0x63,
-	0x6f, 0x76, 0x65, 0x72, 0x79, 0x2f, 0x65, 0x74, 0x63, 0x64, 0x2f, 0x65, 0x74, 0x63, 0x64, 0x73,
-	0x65, 0x72, 0x76, 0x65, 0x72, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x20, 0x0a, 0x0c, 0x52, 0x61, 0x6e, 0x67, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12,
+	0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65,
+	0x79, 0x22, 0x39, 0x0a, 0x0d, 0x52, 0x61, 0x6e, 0x67, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x28, 0x0a, 0x03, 0x6b, 0x76, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32,
+	0x16, 0x2e, 0x65, 0x74, 0x63, 0x64, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x70, 0x62, 0x2e, 0x4b,
+	0x65, 0x79, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x03, 0x6b, 0x76, 0x73, 0x22, 0x48, 0x0a, 0x08,
+	0x4b, 0x65, 0x79, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61,
+	0x6c, 0x75, 0x65, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65,
+	0x12, 0x14, 0x0a, 0x05, 0x6c, 0x65, 0x61, 0x73, 0x65, 0x18, 0x06, 0x20, 0x01, 0x28, 0x03, 0x52,
+	0x05, 0x6c, 0x65, 0x61, 0x73, 0x65, 0x32, 0x82, 0x01, 0x0a, 0x02, 0x4b, 0x56, 0x12, 0x3a, 0x0a,
+	0x03, 0x50, 0x75, 0x74, 0x12, 0x18, 0x2e, 0x65, 0x74, 0x63, 0x64, 0x73, 0x65, 0x72, 0x76, 0x65,
+	0x72, 0x70, 0x62, 0x2e, 0x50, 0x75, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19,
+	0x2e, 0x65, 0x74, 0x63, 0x64, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x70, 0x62, 0x2e, 0x50, 0x75,
+	0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x40, 0x0a, 0x05, 0x52, 0x61, 0x6e,
+	0x67, 0x65, 0x12, 0x1a, 0x2e, 0x65, 0x74, 0x63, 0x64, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x70,
+	0x62, 0x2e, 0x52, 0x61, 0x6e, 0x67, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1b,
+	0x2e, 0x65, 0x74, 0x63, 0x64, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x70, 0x62, 0x2e, 0x52, 0x61,
+	0x6e, 0x67, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x1d, 0x5a, 0x1b, 0x64,
+	0x69, 0x73, 0x63, 0x6f, 0x76, 0x65, 0x72, 0x79, 0x2f, 0x65, 0x74, 0x63, 0x64, 0x2f, 0x65, 0x74,
+	0x63, 0x64, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -261,21 +326,25 @@ func file_discovery_etcd_etcdserverpb_kv_proto_rawDescGZIP() []byte {
 	return file_discovery_etcd_etcdserverpb_kv_proto_rawDescData
 }
 
-var file_discovery_etcd_etcdserverpb_kv_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_discovery_etcd_etcdserverpb_kv_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_discovery_etcd_etcdserverpb_kv_proto_goTypes = []interface{}{
-	(*PutRequest)(nil),  // 0: etcdserverpb.PutRequest
-	(*PutResponse)(nil), // 1: etcdserverpb.PutResponse
-	(*GetRequest)(nil),  // 2: etcdserverpb.GetRequest
-	(*GetResponse)(nil), // 3: etcdserverpb.GetResponse
+	(*PutRequest)(nil),    // 0: etcdserverpb.PutRequest
+	(*PutResponse)(nil),   // 1: etcdserverpb.PutResponse
+	(*RangeRequest)(nil),  // 2: etcdserverpb.RangeRequest
+	(*RangeResponse)(nil), // 3: etcdserverpb.RangeResponse
+	(*KeyValue)(nil),      // 4: etcdserverpb.KeyValue
 }
 var file_discovery_etcd_etcdserverpb_kv_proto_depIdxs = []int32{
-	0, // 0: etcdserverpb.KV.Put:input_type -> etcdserverpb.PutRequest
-	1, // 1: etcdserverpb.KV.Put:output_type -> etcdserverpb.PutResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	4, // 0: etcdserverpb.RangeResponse.kvs:type_name -> etcdserverpb.KeyValue
+	0, // 1: etcdserverpb.KV.Put:input_type -> etcdserverpb.PutRequest
+	2, // 2: etcdserverpb.KV.Range:input_type -> etcdserverpb.RangeRequest
+	1, // 3: etcdserverpb.KV.Put:output_type -> etcdserverpb.PutResponse
+	3, // 4: etcdserverpb.KV.Range:output_type -> etcdserverpb.RangeResponse
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_discovery_etcd_etcdserverpb_kv_proto_init() }
@@ -309,7 +378,7 @@ func file_discovery_etcd_etcdserverpb_kv_proto_init() {
 			}
 		}
 		file_discovery_etcd_etcdserverpb_kv_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetRequest); i {
+			switch v := v.(*RangeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -321,7 +390,19 @@ func file_discovery_etcd_etcdserverpb_kv_proto_init() {
 			}
 		}
 		file_discovery_etcd_etcdserverpb_kv_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetResponse); i {
+			switch v := v.(*RangeResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_discovery_etcd_etcdserverpb_kv_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*KeyValue); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -339,7 +420,7 @@ func file_discovery_etcd_etcdserverpb_kv_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_discovery_etcd_etcdserverpb_kv_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
