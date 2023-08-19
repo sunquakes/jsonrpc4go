@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package etcdserverpb;
+
+option go_package = "discovery/etcd/etcdserverpb";
+
+service KV {
+  rpc Put(PutRequest) returns (PutResponse);
+  rpc Range(RangeRequest) returns (RangeResponse);
+}
+
+message PutRequest {
+  string key = 1;
+  bytes value = 2;
+  int64 lease = 3;
+}
+
+message PutResponse {
+}
+
+message RangeRequest {
+  string key = 1;
+}
+
+message RangeResponse {
+  repeated KeyValue kvs = 2;
+}
+
+message KeyValue {
+  string key = 1;
+  bytes value = 5;
+  int64 lease = 6;
+}

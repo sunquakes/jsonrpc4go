@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package etcdserverpb;
+
+option go_package = "discovery/etcd/etcdserverpb";
+
+service Lease {
+  rpc LeaseGrant(LeaseGrantRequest) returns (LeaseGrantResponse);
+  rpc LeaseKeepAlive(stream LeaseKeepAliveRequest) returns (stream LeaseKeepAliveResponse);
+}
+
+message LeaseGrantRequest {
+  int64 TTL = 1;
+}
+
+message LeaseGrantResponse {
+  int64 ID = 1;
+}
+
+message LeaseKeepAliveRequest {
+  int64 ID = 1;
+}
+
+message LeaseKeepAliveResponse {
+  int64 ID = 1;
+}
