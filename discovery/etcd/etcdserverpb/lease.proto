@@ -6,7 +6,7 @@ option go_package = "discovery/etcd/etcdserverpb";
 
 service Lease {
   rpc LeaseGrant(LeaseGrantRequest) returns (LeaseGrantResponse);
-  rpc LeaseKeepAlive(stream LeaseKeepAliveRequest) returns (stream LeaseKeepAliveResponse);
+  rpc LeaseKeepAlive(LeaseKeepAliveRequest) returns (LeaseKeepAliveResponse);
 }
 
 message LeaseGrantRequest {
