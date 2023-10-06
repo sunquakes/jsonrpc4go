@@ -13,9 +13,15 @@ import (
 	"time"
 )
 
+var (
+	TTL      = 10
+	INTERVAL = 5 * time.Second
+)
+
 type Etcd struct {
-	URL  *url.URL
-	Conn *grpc.ClientConn
+	URL       *url.URL
+	Conn      *grpc.ClientConn
+	Heartbeat chan bool
 }
 
 type Service struct {
@@ -34,7 +40,8 @@ func NewEtcd(rawURL string) (discovery.Driver, error) {
 	if err != nil {
 		return nil, err
 	}
-	etcd := &Etcd{URL, conn}
+	heartbeat := make(chan bool)
+	etcd := &Etcd{URL, conn, heartbeat}
 	return etcd, nil
 }
 
@@ -53,7 +60,7 @@ func (d *Etcd) Register(name string, protocol string, hostname string, port int)
 	kvClient := etcdserverpb.NewKVClient(d.Conn)
 
 	// Grant a new lease
-	grantResp, err := leaseClient.LeaseGrant(context.Background(), &etcdserverpb.LeaseGrantRequest{TTL: 10})
+	grantResp, err := leaseClient.LeaseGrant(context.Background(), &etcdserverpb.LeaseGrantRequest{TTL: int64(TTL)})
 	if err != nil {
 		return err
 	}
@@ -71,6 +78,9 @@ func (d *Etcd) Register(name string, protocol string, hostname string, port int)
 	if err != nil {
 		return err
 	}
+	d.SendHeartbeat(func() {
+		leaseClient.LeaseKeepAlive(context.Background(), &etcdserverpb.LeaseKeepAliveRequest{ID: leaseID})
+	})
 	return nil
 }
 
@@ -91,4 +101,21 @@ func (d *Etcd) Get(name string) (string, error) {
 		servers = append(servers, service.Addr)
 	}
 	return strings.Join(servers, ","), nil
+}
+
+func (d *Etcd) SendHeartbeat(f func()) {
+	go func() {
+		for {
+			d.Heartbeat <- true
+			time.Sleep(INTERVAL)
+		}
+	}()
+	go func() {
+		for {
+			select {
+			case <-d.Heartbeat:
+				f()
+			}
+		}
+	}()
 }

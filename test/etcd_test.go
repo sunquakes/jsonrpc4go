@@ -121,7 +121,8 @@ func TestEtcdRegister(t *testing.T) {
 		t.Error(err)
 	}
 
-	r := &etcd.Etcd{URL, clientConn}
+	heartbeat := make(chan bool)
+	r := &etcd.Etcd{URL, clientConn, heartbeat}
 	// r, err := etcd.NewEtcd("grpc://127.0.0.1:2379")
 	if err != nil {
 		t.Error(err)
@@ -168,7 +169,8 @@ func TestEtcdGet(t *testing.T) {
 		t.Error(err)
 	}
 
-	r := &etcd.Etcd{URL, clientConn}
+	heartbeat := make(chan bool)
+	r := &etcd.Etcd{URL, clientConn, heartbeat}
 	// r, err := etcd.NewEtcd("grpc://127.0.0.1:2379")
 	if err != nil {
 		t.Error(err)
