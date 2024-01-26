@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 )
 
 type Tcp struct {
@@ -53,11 +54,8 @@ func (s *TcpServer) Start() {
 	// Register services
 	if s.Discovery != nil {
 		register := func(key, value interface{}) bool {
-			err := s.Discovery.Register(key.(string), "tcp", s.Hostname, s.Port)
-			if err == nil {
-				return true
-			}
-			return false
+			go s.DiscoveryRegister(key, value)
+			return true
 		}
 		s.Server.Sm.Range(register)
 	}
@@ -76,10 +74,19 @@ func (s *TcpServer) Start() {
 		conn, err := listener.AcceptTCP()
 		if err != nil {
 			log.Panic(err.Error())
-			continue
 		}
 		go s.handleFunc(ctx, conn)
 	}
+}
+
+func (s *TcpServer) DiscoveryRegister(key, value interface{}) bool {
+	err := s.Discovery.Register(key.(string), "tcp", s.Hostname, s.Port)
+	if err == nil {
+		return true
+	}
+	time.Sleep(REGISTRY_RETRY_INTERVAL * time.Millisecond)
+	s.DiscoveryRegister(key, value)
+	return false
 }
 
 func (s *TcpServer) Register(m any) {

@@ -5,6 +5,8 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const REGISTRY_RETRY_INTERVAL = 3000
+
 type Protocol interface {
 	NewServer() Server
 }
@@ -17,6 +19,7 @@ type Server interface {
 	SetRateLimit(rate.Limit, int)
 	Start()
 	Register(s any)
+	DiscoveryRegister(key, value interface{}) bool
 	GetEvent() <-chan int
 }
 
