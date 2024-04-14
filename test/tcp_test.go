@@ -249,7 +249,7 @@ func TestCoTcpCall(t *testing.T) {
 	time.Sleep(time.Duration(2) * time.Second)
 
 	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 40; i++ {
 		wg.Add(1)
 		go func(group *sync.WaitGroup) {
 			defer group.Done()

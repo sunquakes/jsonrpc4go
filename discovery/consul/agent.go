@@ -11,9 +11,7 @@ type Agent struct {
 }
 
 func (a *Agent) GetHealthServices(name string) {
-	address, err := url.ParseRequestURI(a.Url)
-	if err != nil {
-	}
+	address, _ := url.ParseRequestURI(a.Url)
 	address.Path = "/agent/service/" + name
 	address.Query().Set("token", a.Token)
 	http.Get(address.String())

@@ -43,7 +43,9 @@ func (x *PutRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PutRequest) ProtoMessage() {}
+func (*PutRequest) ProtoMessage() {
+	// Do nothing.
+}
 
 func (x *PutRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_discovery_etcd_etcdserverpb_kv_proto_msgTypes[0]
@@ -102,7 +104,9 @@ func (x *PutResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PutResponse) ProtoMessage() {}
+func (*PutResponse) ProtoMessage() {
+
+}
 
 func (x *PutResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_discovery_etcd_etcdserverpb_kv_proto_msgTypes[1]

@@ -48,9 +48,11 @@ func NewHttpClient(name string, protocol string, address string, dc discovery.Dr
 }
 
 func (c *HttpClient) SetOptions(httpOptions any) {
+	// Set http request options.
 }
 
 func (c *HttpClient) SetPoolOptions(httpOptions any) {
+	// Set http pool options.
 }
 
 func (c *HttpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {

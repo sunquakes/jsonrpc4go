@@ -40,6 +40,7 @@ func TestHttpCall(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
+	time.Sleep(time.Duration(2) * time.Second)
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3201")
 	params := Params{1, 2}
 	result := new(Result)
