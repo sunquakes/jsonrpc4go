@@ -66,7 +66,7 @@ func TestConsulCheck(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = r.Check(&consul.Check{
+	err = r.DoCheck(&consul.Check{
 		"java_tcp:9999",
 		"java_tcp",
 		"passing",

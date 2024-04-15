@@ -160,11 +160,9 @@ func (svr *Server) SingleHandler(jsonMap map[string]any) any {
 	result := reflect.New(m.ResultType.Elem())
 
 	// before
-	if svr.Hooks.BeforeFunc != nil {
-		err = svr.Hooks.BeforeFunc(id, mName, params.Elem().Interface())
-		if err != nil {
-			return CE(id, jsonRpc, err.Error())
-		}
+	err = svr.Before(id, mName, params.Elem().Interface())
+	if err != nil {
+		return CE(id, jsonRpc, err.Error())
 	}
 
 	r := m.Method.Func.Call([]reflect.Value{s.(*Service).V, params, result})
@@ -174,6 +172,10 @@ func (svr *Server) SingleHandler(jsonMap map[string]any) any {
 		return E(id, jsonRpc, InternalError)
 	}
 	// after
+	err = svr.Before(id, mName, result.Elem().Interface())
+	if err != nil {
+		return CE(id, jsonRpc, err.Error())
+	}
 	if svr.Hooks.AfterFunc != nil {
 		err = svr.Hooks.AfterFunc(id, mName, result.Elem().Interface())
 		if err != nil {
@@ -182,6 +184,26 @@ func (svr *Server) SingleHandler(jsonMap map[string]any) any {
 	}
 
 	return S(id, jsonRpc, result.Elem().Interface())
+}
+
+func (svr *Server) Before(id any, mName string, params any) error {
+	if svr.Hooks.BeforeFunc != nil {
+		err := svr.Hooks.BeforeFunc(id, mName, params)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (svr *Server) After(id any, mName string, result any) error {
+	if svr.Hooks.AfterFunc != nil {
+		err := svr.Hooks.AfterFunc(id, mName, result)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func lineToHump(in string) string {

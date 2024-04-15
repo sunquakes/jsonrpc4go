@@ -91,6 +91,11 @@ func (d *Consul) Register(name string, protocol string, hostname string, port in
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		return errors.New(StatusCodeMap[resp.StatusCode])
 	}
+	d.Check(ID, name, protocol, hostname, port)
+	return nil
+}
+
+func (d *Consul) Check(ID string, name string, protocol string, hostname string, port int) error {
 	check := d.URL.Query().Get("check")
 	if check == "true" {
 		interval := d.URL.Query().Get("interval")
@@ -118,7 +123,7 @@ func (d *Consul) Register(name string, protocol string, hostname string, port in
 			interval,
 			timeout,
 		}
-		err := d.Check(check)
+		err := d.DoCheck(check)
 		if err != nil {
 			return err
 		}
@@ -149,7 +154,7 @@ func (d *Consul) Get(name string) (string, error) {
 	return strings.Join(ua, ","), err
 }
 
-func (d *Consul) Check(check *Check) error {
+func (d *Consul) DoCheck(check *Check) error {
 	URL, err := GetURL(d.URL.Redacted(), "/v1/agent/check/register", d.Token)
 	if err != nil {
 		return err
