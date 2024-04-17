@@ -50,15 +50,16 @@ func ParseRequestMethod(method string) (sName string, mName string, err error) {
 	if first == "." || first == "/" {
 		method = method[1:]
 	}
+	msg := "rpc: method request ill-formed: %s; need x.y or x/y"
 	if strings.Count(method, ".") != 1 && strings.Count(method, "/") != 1 {
-		m = fmt.Sprintf("rpc: method request ill-formed: %s; need x.y or x/y", method)
+		m = fmt.Sprintf(msg, method)
 		Debug(m)
 		return sName, mName, errors.New(m)
 	}
 	if strings.Count(method, ".") == 1 {
 		sp = strings.LastIndex(method, ".")
 		if sp < 0 {
-			m = fmt.Sprintf("rpc: method request ill-formed: %s; need x.y or x/y", method)
+			m = fmt.Sprintf(msg, method)
 			return sName, mName, errors.New(m)
 		}
 
@@ -67,7 +68,7 @@ func ParseRequestMethod(method string) (sName string, mName string, err error) {
 	} else if strings.Count(method, "/") == 1 {
 		sp = strings.LastIndex(method, "/")
 		if sp < 0 {
-			m = fmt.Sprintf("rpc: method request ill-formed: %s; need x.y or x/y", method)
+			m = fmt.Sprintf(msg, method)
 			return sName, mName, errors.New(m)
 		}
 
