@@ -12,6 +12,9 @@ import (
 	"time"
 )
 
+const EQUAL_MESSAGE_TEMPLETE = "%d + %d expected be %d, but %d got"
+const ERROR_MESSAGE_TEMPLETE = "Error expected be %s, but %s got"
+
 type IntRpc struct{}
 
 type Params struct {
@@ -46,7 +49,7 @@ func TestHttpCall(t *testing.T) {
 	result := new(Result)
 	_ = c.Call("Add", &params, result, false)
 	if *result != 3 {
-		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
+		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
 }
 
@@ -62,7 +65,7 @@ func TestHttpCallMethod(t *testing.T) {
 	result := new(Result)
 	_ = c.Call("Add", &params, result, false)
 	if *result != 3 {
-		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 3, *result)
+		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
 }
 
@@ -78,7 +81,7 @@ func TestHttpNotifyCall(t *testing.T) {
 	result := new(Result)
 	_ = c.Call("Add", &params, result, true)
 	if *result != 5 {
-		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 5, *result)
+		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 5, *result)
 	}
 }
 
@@ -97,10 +100,10 @@ func TestHttpBatchCall(t *testing.T) {
 	err2 := c.BatchAppend("Add", Params{2, 3}, result2, false)
 	_ = c.BatchCall()
 	if *err2 != nil || *result2 != 5 {
-		t.Errorf("%d + %d expected be %d, but %d got", 2, 3, 5, result2)
+		t.Errorf(EQUAL_MESSAGE_TEMPLETE, 2, 3, 5, result2)
 	}
 	if (*err1).Error() != common.CodeMap[common.MethodNotFound] {
-		t.Errorf("Error message expected be %s, but %s got", common.CodeMap[common.MethodNotFound], (*err1).Error())
+		t.Errorf(ERROR_MESSAGE_TEMPLETE, common.CodeMap[common.MethodNotFound], (*err1).Error())
 	}
 }
 
@@ -152,7 +155,7 @@ func TestHttpConsul(t *testing.T) {
 	result := new(Result)
 	c.Call("Add", &params, result, false)
 	if *result != 21 {
-		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 21, *result)
+		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
 }
 
@@ -178,7 +181,7 @@ func TestHttpNacos(t *testing.T) {
 	result := new(Result)
 	c.Call("Add", &params, result, false)
 	if *result != 21 {
-		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 21, *result)
+		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
 }
 
@@ -194,6 +197,6 @@ func TestDataType(t *testing.T) {
 	result := new(int)
 	_ = c.Call("Sub", &params, result, false)
 	if *result != 1 {
-		t.Errorf("%d + %d expected be %d, but %d got", params.A, params.B, 1, *result)
+		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 1, *result)
 	}
 }
