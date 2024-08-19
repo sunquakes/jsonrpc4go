@@ -120,16 +120,16 @@ func TestHttpRateLimit(t *testing.T) {
 	result := new(Result)
 	err := c.Call("Add", &params, result, false)
 	if err != nil {
-		t.Errorf("Error expected be %s, but %s got", "nil", err.Error())
+		t.Errorf(ERROR_MESSAGE_TEMPLETE, "nil", err.Error())
 	}
 	err = c.Call("Add", &params, result, false)
 	if err.Error() != "Too many requests" {
-		t.Errorf("Error expected be %s, but %s got", "Too many requests", err.Error())
+		t.Errorf(ERROR_MESSAGE_TEMPLETE, "Too many requests", err.Error())
 	}
 	time.Sleep(time.Duration(2) * time.Second)
 	err = c.Call("Add", &params, result, false)
 	if err != nil {
-		t.Errorf("Error expected be %s, but %s got", "nil", err.Error())
+		t.Errorf(ERROR_MESSAGE_TEMPLETE, "nil", err.Error())
 	}
 }
 
