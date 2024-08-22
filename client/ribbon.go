@@ -6,7 +6,8 @@ import (
 )
 
 func GetAddress(addressList []string) string {
-	rand.Seed(time.Now().UnixNano())
-	key := rand.Intn(len(addressList))
+	source := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(source)
+	key := r.Intn(len(addressList))
 	return addressList[key]
 }
