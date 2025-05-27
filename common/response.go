@@ -3,7 +3,6 @@ package common
 import (
 	"encoding/json"
 	"errors"
-	"github.com/mitchellh/mapstructure"
 	"reflect"
 )
 
@@ -96,7 +95,13 @@ func GetSingleResponse(jsonData map[string]any, result any) error {
 		Debug(resErr.Message)
 		return errors.New(resErr.Message)
 	}
-	if err = mapstructure.Decode(jsonData["result"], result); err != nil {
+	jsonStr, err := json.Marshal(jsonData["result"])
+	if err != nil {
+		Debug(err)
+		return err
+	}
+	err = json.Unmarshal(jsonStr, result)
+	if err != nil {
 		Debug(err)
 		return err
 	}

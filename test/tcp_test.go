@@ -4,17 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
+	"time"
+
 	"github.com/sunquakes/jsonrpc4go"
 	"github.com/sunquakes/jsonrpc4go/client"
 	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/discovery/consul"
 	"github.com/sunquakes/jsonrpc4go/discovery/nacos"
 	"github.com/sunquakes/jsonrpc4go/server"
-	"net/http"
-	"net/http/httptest"
-	"sync"
-	"testing"
-	"time"
 )
 
 const CUSTOM_ERROR = "Custom Error"
@@ -333,7 +334,7 @@ func TestTcpConsul(t *testing.T) {
 	dc, err := consul.NewConsul(ts.URL)
 	// dc, err := consul.NewConsul("http://localhost:8500?check=false&instanceId=1&interval=10s")
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err.Error())
 	}
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", 3614)
@@ -359,7 +360,7 @@ func TestTcpNacos(t *testing.T) {
 	dc, err := nacos.NewNacos(ts.URL)
 	// dc, err := nacos.NewNacos("http://localhost:8849?namespaceId=79f14f4e-f5e8-46b6-90b9-0ad105b8626d&groupName=test1")
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err.Error())
 	}
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", 3616)
