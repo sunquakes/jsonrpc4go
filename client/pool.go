@@ -2,11 +2,14 @@ package client
 
 import (
 	"errors"
-	"fmt"
-	"github.com/sunquakes/jsonrpc4go/discovery"
+	"log"
 	"net"
 	"strings"
 	"sync"
+
+	"slices"
+
+	"github.com/sunquakes/jsonrpc4go/discovery"
 )
 
 type PoolOptions struct {
@@ -103,8 +106,8 @@ func (p *Pool) Create() (net.Conn, error) {
 	address := p.ActiveAddressList[key]
 	conn, err := p.Connect(address)
 	if err != nil {
-		p.ActiveAddressList = append(p.ActiveAddressList[:key], p.ActiveAddressList[key+1:]...)
-		fmt.Errorf("Can not connect %s", address)
+		p.ActiveAddressList = slices.Delete(p.ActiveAddressList, key, key+1)
+		log.Printf("Can not connect %s", address)
 	}
 	return conn, err
 }

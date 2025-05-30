@@ -34,8 +34,8 @@ type TcpOptions struct {
 
 func (p *Tcp) NewServer() Server {
 	options := TcpOptions{
-		"\r\n",
-		1024 * 1024 * 2,
+		PackageEof:       "\r\n",
+		PackageMaxLength: 1024 * 1024 * 2,
 	}
 	return &TcpServer{
 		"",

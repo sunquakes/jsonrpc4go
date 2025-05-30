@@ -3,11 +3,12 @@ package client
 import (
 	"bytes"
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go/common"
-	"github.com/sunquakes/jsonrpc4go/discovery"
 	"net"
 	"strconv"
 	"time"
+
+	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/discovery"
 )
 
 type Tcp struct {
@@ -55,11 +56,11 @@ func NewTcpClient(name string, protocol string, address string, dc discovery.Dri
 
 func (c *TcpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
 	singleRequest := &common.SingleRequest{
-		method,
-		params,
-		result,
-		new(error),
-		isNotify,
+		Method:   method,
+		Params:   params,
+		Result:   result,
+		Error:    new(error),
+		IsNotify: isNotify,
 	}
 	c.RequestList = append(c.RequestList, singleRequest)
 	return singleRequest.Error
@@ -145,12 +146,12 @@ func (c *TcpClient) handleFunc(b []byte, result any) error {
 	l := 0
 	for {
 		var buf = make([]byte, c.Options.PackageMaxLength)
-		n, err := conn.Read(buf)
-		if err != nil {
+		n, readErr := conn.Read(buf)
+		if readErr != nil {
 			if n == 0 {
-				return err
+				return readErr
 			}
-			common.Debug(err.Error())
+			common.Debug(readErr.Error())
 		}
 		l += n
 		data = append(data, buf[:n]...)

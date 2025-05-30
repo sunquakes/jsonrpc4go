@@ -145,11 +145,6 @@ func (d *Consul) Get(name string) (string, error) {
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		return "", errors.New(StatusCodeMap[resp.StatusCode])
 	}
-	// 在 Go 1.16 及以后版本中，建议使用 io.ReadAll 替换 io.ReadAll
-	// 这里无需实际代码，仅作说明，后续在使用处可替换为 io.ReadAll
-	// 原代码：body, err := io.ReadAll(resp.Body)
-	// 替换后：body, err := io.ReadAll(resp.Body)
-	// 需添加 import "io" 到文件头部的 import 语句中
 	body, err := io.ReadAll(resp.Body)
 	var hss []HealthService
 	json.Unmarshal(body, &hss)

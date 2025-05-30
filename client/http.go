@@ -58,11 +58,11 @@ func (c *HttpClient) SetPoolOptions(httpOptions any) {
 
 func (c *HttpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
 	singleRequest := &common.SingleRequest{
-		method,
-		params,
-		result,
-		new(error),
-		isNotify,
+		Method:   method,
+		Params:   params,
+		Result:   result,
+		Error:    new(error),
+		IsNotify: isNotify,
 	}
 	c.RequestList = append(c.RequestList, singleRequest)
 	return singleRequest.Error

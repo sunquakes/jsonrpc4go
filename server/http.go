@@ -54,16 +54,16 @@ type HttpOptions struct {
 func (p *Http) NewServer() Server {
 	options := HttpOptions{}
 	return &HttpServer{
-		"",
-		p.Port,
-		common.Server{
+		Hostname: "",
+		Port:     p.Port,
+		Server: common.Server{
 			Sm:          sync.Map{},
 			Hooks:       common.Hooks{},
 			RateLimiter: nil,
 		},
-		options,
-		make(chan int, 1),
-		nil,
+		Options:   options,
+		Event:     make(chan int, 1),
+		Discovery: nil,
 	}
 }
 
