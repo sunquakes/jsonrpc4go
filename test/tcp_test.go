@@ -94,13 +94,13 @@ func TestTcpBatchCall(t *testing.T) {
 func TestSetOption(t *testing.T) {
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", 3605)
-		s.SetOptions(server.TcpOptions{"aaaaaa", 2 * 1024 * 1024})
+		s.SetOptions(server.TcpOptions{PackageEof: "aaaaaa", PackageMaxLength: 2 * 1024 * 1024})
 		s.Register(new(IntRpc))
 		s.Start()
 	}()
 	time.Sleep(time.Duration(2) * time.Second)
 	s, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3605")
-	s.SetOptions(client.TcpOptions{"aaaaaa", 2 * 1024 * 1024})
+	s.SetOptions(client.TcpOptions{PackageEof: "aaaaaa", PackageMaxLength: 2 * 1024 * 1024})
 	params := Params{1, 2}
 	result := new(Result)
 	s.Call("Add", &params, result, false)
@@ -208,7 +208,7 @@ func (i *LongRpc) Add(params *LongParams, result *LongResult) error {
 func TestLongPackageTcpCall(t *testing.T) {
 	go func() {
 		s, _ := jsonrpc4go.NewServer("tcp", 3609)
-		s.SetOptions(server.TcpOptions{"\r\n", 2 * 1024 * 1024})
+		s.SetOptions(server.TcpOptions{PackageEof: "\r\n", PackageMaxLength: 2 * 1024 * 1024})
 		s.Register(new(LongRpc))
 		s.Start()
 	}()
@@ -219,7 +219,7 @@ func TestLongPackageTcpCall(t *testing.T) {
 		go func(group *sync.WaitGroup) {
 			defer group.Done()
 			c, _ := jsonrpc4go.NewClient("LongRpc", "tcp", "127.0.0.1:3609")
-			c.SetOptions(client.TcpOptions{"\r\n", 2 * 1024 * 1024})
+			c.SetOptions(client.TcpOptions{PackageEof: "\r\n", PackageMaxLength: 2 * 1024 * 1024})
 			params := LongParams{LongString1, LongString2}
 			result := new(LongResult)
 			for j := 0; j < 100; j++ {

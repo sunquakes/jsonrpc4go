@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go/discovery"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sunquakes/jsonrpc4go/discovery"
 )
 
 const IS_EPHEMERAL = "true"
@@ -79,7 +80,7 @@ func (d *Nacos) Register(name string, protocol string, hostname string, port int
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != STATUS_CODE_PASSING {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
@@ -106,7 +107,7 @@ func (d *Nacos) Get(name string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		if err != nil {
 			return "", err
@@ -157,7 +158,7 @@ func (d *Nacos) Beat(name string, hostname string, port int) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != STATUS_CODE_PASSING {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}

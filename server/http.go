@@ -3,15 +3,16 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go/common"
-	"github.com/sunquakes/jsonrpc4go/discovery"
-	"golang.org/x/time/rate"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/discovery"
+	"golang.org/x/time/rate"
 )
 
 func GetHostname() (string, error) {
@@ -56,9 +57,9 @@ func (p *Http) NewServer() Server {
 		"",
 		p.Port,
 		common.Server{
-			sync.Map{},
-			common.Hooks{},
-			nil,
+			Sm:          sync.Map{},
+			Hooks:       common.Hooks{},
+			RateLimiter: nil,
 		},
 		options,
 		make(chan int, 1),
@@ -141,7 +142,7 @@ func (s *HttpServer) handleFunc(w http.ResponseWriter, r *http.Request) {
 		data []byte
 	)
 	w.Header().Set("Content-Type", "application/json")
-	if data, err = ioutil.ReadAll(r.Body); err != nil {
+	if data, err = io.ReadAll(r.Body); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
