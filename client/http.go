@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go/common"
-	"github.com/sunquakes/jsonrpc4go/discovery"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/discovery"
 )
 
 type Http struct {
@@ -26,8 +27,13 @@ type HttpClient struct {
 	Protocol    string
 	Address     string
 	Discovery   discovery.Driver
-	AddressList []string
+	AddressList []*AddressInfo
 	RequestList []*common.SingleRequest
+}
+
+type AddressInfo struct {
+	Address string
+	Load    int
 }
 
 func (p *Http) NewClient() Client {
@@ -57,11 +63,11 @@ func (c *HttpClient) SetPoolOptions(httpOptions any) {
 
 func (c *HttpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
 	singleRequest := &common.SingleRequest{
-		method,
-		params,
-		result,
-		new(error),
-		isNotify,
+		Method:   method,
+		Params:   params,
+		Result:   result,
+		Error:    new(error),
+		IsNotify: isNotify,
 	}
 	c.RequestList = append(c.RequestList, singleRequest)
 	return singleRequest.Error
@@ -116,7 +122,7 @@ func (c *HttpClient) handleFunc(b []byte, result any) error {
 		return err
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -135,7 +141,14 @@ func (c *HttpClient) SetAddressList() {
 			common.Debug(err.Error())
 		}
 	}
-	addressList := strings.Split(address, ",")
+	addresses := strings.Split(address, ",")
+	addressList := make([]*AddressInfo, 0)
+	for _, v := range addresses {
+		addressList = append(addressList, &AddressInfo{
+			Address: v,
+			Load:    0,
+		})
+	}
 	c.AddressList = addressList
 }
 
@@ -146,8 +159,24 @@ func (c *HttpClient) GetAddress() (string, error) {
 	}
 	size = len(c.AddressList)
 	if size == 0 {
-		return "", errors.New("Fail to get service url.")
+		return "", errors.New("fail to get service url")
 	}
-	n := rand.Intn(size)
-	return c.AddressList[n], nil
+	if size == 1 {
+		return c.AddressList[0].Address, nil
+	}
+	// Randomly select two nodes
+	// 初始化随机数生成器，确保每次运行程序时结果不同
+	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
+	index1 := randSource.Intn(size)
+	index2 := randSource.Intn(size)
+	// Make sure the two nodes are different
+	for index1 == index2 {
+		index2 = rand.Intn(size)
+	}
+	if c.AddressList[index1].Load < c.AddressList[index2].Load {
+		c.AddressList[index1].Load++
+		return c.AddressList[index1].Address, nil
+	}
+	c.AddressList[index2].Load++
+	return c.AddressList[index2].Address, nil
 }

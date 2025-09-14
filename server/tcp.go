@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go/common"
-	"github.com/sunquakes/jsonrpc4go/discovery"
-	"golang.org/x/time/rate"
 	"log"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/discovery"
+	"golang.org/x/time/rate"
 )
 
 type Tcp struct {
@@ -33,16 +34,16 @@ type TcpOptions struct {
 
 func (p *Tcp) NewServer() Server {
 	options := TcpOptions{
-		"\r\n",
-		1024 * 1024 * 2,
+		PackageEof:       "\r\n",
+		PackageMaxLength: 1024 * 1024 * 2,
 	}
 	return &TcpServer{
 		"",
 		p.Port,
 		common.Server{
-			sync.Map{},
-			common.Hooks{},
-			nil,
+			Sm:          sync.Map{},
+			Hooks:       common.Hooks{},
+			RateLimiter: nil,
 		},
 		options,
 		make(chan int, 1),

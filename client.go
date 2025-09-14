@@ -2,9 +2,10 @@ package jsonrpc4go
 
 import (
 	"errors"
+	"reflect"
+
 	"github.com/sunquakes/jsonrpc4go/client"
 	"github.com/sunquakes/jsonrpc4go/discovery"
-	"reflect"
 )
 
 func NewClient(name string, protocol string, server any) (client.Client, error) {
@@ -21,9 +22,9 @@ func NewClient(name string, protocol string, server any) (client.Client, error) 
 
 	switch protocol {
 	case "http":
-		p = &client.Http{name, protocol, address, dc}
+		p = &client.Http{Name: name, Protocol: protocol, Address: address, Discovery: dc}
 	case "tcp":
-		p = &client.Tcp{name, protocol, address, dc}
+		p = &client.Tcp{Name: name, Protocol: protocol, Address: address, Discovery: dc}
 	default:
 		return nil, errors.New("The protocol can not be supported")
 	}

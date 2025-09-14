@@ -2,11 +2,14 @@ package client
 
 import (
 	"errors"
-	"fmt"
-	"github.com/sunquakes/jsonrpc4go/discovery"
+	"log"
 	"net"
 	"strings"
 	"sync"
+
+	"slices"
+
+	"github.com/sunquakes/jsonrpc4go/discovery"
 )
 
 type PoolOptions struct {
@@ -28,14 +31,14 @@ type Pool struct {
 func NewPool(name, address string, dc discovery.Driver, option PoolOptions) *Pool {
 	ch := make(chan net.Conn, option.MaxActive)
 	pool := &Pool{
-		name,
-		dc,
-		address,
-		nil,
-		sync.Mutex{},
-		option,
-		0,
-		ch,
+		Name:              name,
+		Discovery:         dc,
+		Address:           address,
+		ActiveAddressList: nil,
+		Lock:              sync.Mutex{},
+		Options:           option,
+		ActiveTotal:       0,
+		Conns:             ch,
 	}
 	pool.ActiveAddress()
 	pool.Lock.Lock()
@@ -72,7 +75,7 @@ func (p *Pool) Borrow() (net.Conn, error) {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
 	if p.ActiveTotal <= 0 {
-		return nil, errors.New("Unable to connect to the server.")
+		return nil, errors.New("unable to connect to the server")
 	}
 	if p.ActiveTotal >= p.Options.MaxActive {
 		return <-p.Conns, nil
@@ -103,8 +106,8 @@ func (p *Pool) Create() (net.Conn, error) {
 	address := p.ActiveAddressList[key]
 	conn, err := p.Connect(address)
 	if err != nil {
-		p.ActiveAddressList = append(p.ActiveAddressList[:key], p.ActiveAddressList[key+1:]...)
-		fmt.Errorf("Can not connect %s", address)
+		p.ActiveAddressList = slices.Delete(p.ActiveAddressList, key, key+1)
+		log.Printf("Can not connect %s", address)
 	}
 	return conn, err
 }

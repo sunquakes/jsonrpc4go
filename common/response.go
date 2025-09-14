@@ -79,11 +79,6 @@ func jsonE(id any, jsonRpc string, errCode int) []byte {
 	return e
 }
 
-func jsonS(id any, jsonRpc string, result any) []byte {
-	s, _ := json.Marshal(S(id, jsonRpc, result))
-	return s
-}
-
 func GetSingleResponse(jsonData map[string]any, result any) error {
 	var (
 		err error

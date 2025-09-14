@@ -2,11 +2,12 @@ package test
 
 import (
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go/discovery/consul"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/sunquakes/jsonrpc4go/discovery/consul"
 )
 
 func TestConsulRequestURL(t *testing.T) {
@@ -62,20 +63,20 @@ func TestConsulCheck(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	r := &consul.Consul{URL, URL.Query().Get("token")}
+	r := &consul.Consul{URL: URL, Token: URL.Query().Get("token")}
 	if err != nil {
 		t.Error(err)
 	}
 	err = r.DoCheck(&consul.Check{
-		"java_tcp:9999",
-		"java_tcp",
-		"passing",
-		"java_tcp:9999",
-		"",
-		"",
-		"localhost:9999",
-		"10s",
-		"10s",
+		ID:        "java_tcp:9999",
+		Name:      "java_tcp",
+		Status:    "passing",
+		ServiceID: "java_tcp:9999",
+		HTTP:      "",
+		Method:    "",
+		TCP:       "localhost:9999",
+		Interval:  "10s",
+		Timeout:   "10s",
 	})
 	if err != nil {
 		t.Error(err)

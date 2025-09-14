@@ -2,19 +2,27 @@ package test
 
 import (
 	"context"
-	"github.com/sunquakes/jsonrpc4go/discovery/etcd"
-	"github.com/sunquakes/jsonrpc4go/discovery/etcd/etcdserverpb"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/test/bufconn"
+	"log"
 	"net"
 	"net/url"
 	"testing"
-	"time"
+
+	"github.com/sunquakes/jsonrpc4go/discovery/etcd"
+	"github.com/sunquakes/jsonrpc4go/discovery/etcd/etcdserverpb"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
 )
 
 type KVInterface interface {
 	Put(context.Context, *etcdserverpb.PutRequest) (*etcdserverpb.PutResponse, error)
 	Range(context.Context, *etcdserverpb.RangeRequest) (*etcdserverpb.RangeResponse, error)
+}
+
+func NewEtcdClient(target string, conn net.Conn) (*grpc.ClientConn, error) {
+	return grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+		return conn, nil
+	}))
 }
 
 type MockKVService struct{}
@@ -94,7 +102,7 @@ func TestEtcdRegister(t *testing.T) {
 	// Start the server in a goroutine
 	go func() {
 		if err := grpcServer.Serve(bufListener); err != nil {
-			t.Fatalf("gRPC server error: %v", err)
+			log.Fatalf("gRPC server error: %v", err)
 		}
 	}()
 	defer grpcServer.Stop()
@@ -107,9 +115,7 @@ func TestEtcdRegister(t *testing.T) {
 	defer conn.Close()
 
 	// Create a gRPC client connection using grpc.Dial
-	clientConn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithDialer(func(string, time.Duration) (net.Conn, error) {
-		return conn, nil
-	}))
+	clientConn, err := NewEtcdClient("192.168.1.15:3232", conn)
 	if err != nil {
 		t.Fatalf("Failed to create gRPC client connection: %v", err)
 	}
@@ -122,7 +128,7 @@ func TestEtcdRegister(t *testing.T) {
 	}
 
 	heartbeat := make(chan bool)
-	r := &etcd.Etcd{URL, clientConn, heartbeat}
+	r := &etcd.Etcd{URL: URL, Conn: clientConn, Heartbeat: heartbeat}
 	// r, err := etcd.NewEtcd("grpc://127.0.0.1:2379")
 	if err != nil {
 		t.Error(err)
@@ -142,7 +148,7 @@ func TestEtcdGet(t *testing.T) {
 	// Start the server in a goroutine
 	go func() {
 		if err := grpcServer.Serve(bufListener); err != nil {
-			t.Fatalf("gRPC server error: %v", err)
+			log.Fatalf("gRPC server error: %v", err)
 		}
 	}()
 	defer grpcServer.Stop()
@@ -155,9 +161,7 @@ func TestEtcdGet(t *testing.T) {
 	defer conn.Close()
 
 	// Create a gRPC client connection using grpc.Dial
-	clientConn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithDialer(func(string, time.Duration) (net.Conn, error) {
-		return conn, nil
-	}))
+	clientConn, err := NewEtcdClient("192.168.1.15:3232", conn)
 	if err != nil {
 		t.Fatalf("Failed to create gRPC client connection: %v", err)
 	}
@@ -170,7 +174,7 @@ func TestEtcdGet(t *testing.T) {
 	}
 
 	heartbeat := make(chan bool)
-	r := &etcd.Etcd{URL, clientConn, heartbeat}
+	r := &etcd.Etcd{URL: URL, Conn: clientConn, Heartbeat: heartbeat}
 	// r, err := etcd.NewEtcd("grpc://127.0.0.1:2379")
 	if err != nil {
 		t.Error(err)

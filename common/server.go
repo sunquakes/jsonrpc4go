@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/time/rate"
 	"reflect"
 	"strings"
 	"sync"
+
+	"golang.org/x/time/rate"
 )
 
 type Method struct {
@@ -50,7 +51,7 @@ func (svr *Server) Register(s any) error {
 
 func RegisterMethods(s reflect.Type) map[string]*Method {
 	mm := make(map[string]*Method)
-	for m := 0; m < s.NumMethod(); m++ {
+	for m := range s.NumMethod() {
 		rm := s.Method(m)
 		if mt := RegisterMethod(rm); mt != nil {
 			mm[rm.Name] = mt
@@ -192,7 +193,7 @@ func (svr *Server) Before(id any, mName string, params any) error {
 
 func (svr *Server) After(id any, mName string, result any) error {
 	if svr.Hooks.AfterFunc != nil {
-		err := svr.Hooks.AfterFunc(id, mName, result.(interface{}))
+		err := svr.Hooks.AfterFunc(id, mName, result.(any))
 		if err != nil {
 			return err
 		}

@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go/discovery"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/sunquakes/jsonrpc4go/discovery"
 )
 
 type Consul struct {
@@ -144,7 +145,7 @@ func (d *Consul) Get(name string) (string, error) {
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		return "", errors.New(StatusCodeMap[resp.StatusCode])
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	var hss []HealthService
 	json.Unmarshal(body, &hss)
 	ua := make([]string, 0)

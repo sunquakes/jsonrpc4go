@@ -4,18 +4,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go/discovery"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sunquakes/jsonrpc4go/discovery"
 )
 
 const IS_EPHEMERAL = "true"
 const HEARTBEAT_INTERVAL = 5
 const HEARTBEAT_RETRY_MAX = 3
+
+func ReadAll(body io.ReadCloser) ([]byte, error) {
+	return io.ReadAll(body)
+}
 
 type Nacos struct {
 	URL            *url.URL
@@ -57,11 +62,9 @@ func (d *Nacos) Register(name string, protocol string, hostname string, port int
 	query["ip"] = hostname
 	query["port"] = strconv.Itoa(port)
 	queries := d.URL.Query()
-	if queries != nil {
-		for k, v := range queries {
-			if len(v) > 0 {
-				query[k] = v[0]
-			}
+	for k, v := range queries {
+		if len(v) > 0 {
+			query[k] = v[0]
 		}
 	}
 	query["ephemeral"] = d.Ephemeral
@@ -79,7 +82,7 @@ func (d *Nacos) Register(name string, protocol string, hostname string, port int
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != STATUS_CODE_PASSING {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
@@ -106,7 +109,7 @@ func (d *Nacos) Get(name string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := ReadAll(resp.Body)
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		if err != nil {
 			return "", err
@@ -123,7 +126,7 @@ func (d *Nacos) Get(name string) (string, error) {
 		ua = append(ua, fmt.Sprintf("%s:%d", v.Ip, v.Port))
 	}
 	if len(ua) == 0 {
-		return "", errors.New("Unable to get service url.")
+		return "", errors.New("unable to get service url")
 	}
 	return strings.Join(ua, ","), err
 }
@@ -135,11 +138,9 @@ func (d *Nacos) Beat(name string, hostname string, port int) error {
 	query["ip"] = hostname
 	query["port"] = strconv.Itoa(port)
 	queries := d.URL.Query()
-	if queries != nil {
-		for k, v := range queries {
-			if len(v) > 0 {
-				query[k] = v[0]
-			}
+	for k, v := range queries {
+		if len(v) > 0 {
+			query[k] = v[0]
 		}
 	}
 	query["ephemeral"] = d.Ephemeral
@@ -157,7 +158,7 @@ func (d *Nacos) Beat(name string, hostname string, port int) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != STATUS_CODE_PASSING {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
