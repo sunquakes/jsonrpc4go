@@ -44,13 +44,13 @@ func NewTcpClient(name string, protocol string, address string, dc discovery.Dri
 	}
 	pool := NewPool(name, address, dc, PoolOptions{5, 5})
 	return &TcpClient{
-		name,
-		protocol,
-		address,
-		dc,
-		nil,
-		options,
-		pool,
+		Name:        name,
+		Protocol:    protocol,
+		Address:     address,
+		Discovery:   dc,
+		RequestList: nil,
+		Options:     options,
+		Pool:        pool,
 	}
 }
 
@@ -76,7 +76,7 @@ func (c *TcpClient) BatchCall() error {
 			req any
 		)
 		method := fmt.Sprintf("%s/%s", c.Name, v.Method)
-		if v.IsNotify == true {
+		if v.IsNotify {
 			req = common.Rs(nil, method, v.Params)
 		} else {
 			req = common.Rs(strconv.FormatInt(time.Now().Unix(), 10), method, v.Params)

@@ -31,14 +31,14 @@ type Pool struct {
 func NewPool(name, address string, dc discovery.Driver, option PoolOptions) *Pool {
 	ch := make(chan net.Conn, option.MaxActive)
 	pool := &Pool{
-		name,
-		dc,
-		address,
-		nil,
-		sync.Mutex{},
-		option,
-		0,
-		ch,
+		Name:              name,
+		Discovery:         dc,
+		Address:           address,
+		ActiveAddressList: nil,
+		Lock:              sync.Mutex{},
+		Options:           option,
+		ActiveTotal:       0,
+		Conns:             ch,
 	}
 	pool.ActiveAddress()
 	pool.Lock.Lock()
@@ -75,7 +75,7 @@ func (p *Pool) Borrow() (net.Conn, error) {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
 	if p.ActiveTotal <= 0 {
-		return nil, errors.New("Unable to connect to the server.")
+		return nil, errors.New("unable to connect to the server")
 	}
 	if p.ActiveTotal >= p.Options.MaxActive {
 		return <-p.Conns, nil

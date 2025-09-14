@@ -19,6 +19,12 @@ type KVInterface interface {
 	Range(context.Context, *etcdserverpb.RangeRequest) (*etcdserverpb.RangeResponse, error)
 }
 
+func NewEtcdClient(target string, conn net.Conn) (*grpc.ClientConn, error) {
+	return grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+		return conn, nil
+	}))
+}
+
 type MockKVService struct{}
 
 func (s *MockKVService) Put(ctx context.Context, data *etcdserverpb.PutRequest) (*etcdserverpb.PutResponse, error) {
@@ -109,9 +115,7 @@ func TestEtcdRegister(t *testing.T) {
 	defer conn.Close()
 
 	// Create a gRPC client connection using grpc.Dial
-	clientConn, err := grpc.NewClient("192.168.1.15:3232", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-		return conn, nil
-	}))
+	clientConn, err := NewEtcdClient("192.168.1.15:3232", conn)
 	if err != nil {
 		t.Fatalf("Failed to create gRPC client connection: %v", err)
 	}
@@ -157,9 +161,7 @@ func TestEtcdGet(t *testing.T) {
 	defer conn.Close()
 
 	// Create a gRPC client connection using grpc.Dial
-	clientConn, err := grpc.NewClient("192.168.1.15:3232", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-		return conn, nil
-	}))
+	clientConn, err := NewEtcdClient("192.168.1.15:3232", conn)
 	if err != nil {
 		t.Fatalf("Failed to create gRPC client connection: %v", err)
 	}

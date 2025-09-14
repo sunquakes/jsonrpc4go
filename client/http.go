@@ -159,14 +159,16 @@ func (c *HttpClient) GetAddress() (string, error) {
 	}
 	size = len(c.AddressList)
 	if size == 0 {
-		return "", errors.New("Fail to get service url.")
+		return "", errors.New("fail to get service url")
 	}
 	if size == 1 {
 		return c.AddressList[0].Address, nil
 	}
 	// Randomly select two nodes
-	index1 := rand.Intn(size)
-	index2 := rand.Intn(size)
+	// 初始化随机数生成器，确保每次运行程序时结果不同
+	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
+	index1 := randSource.Intn(size)
+	index2 := randSource.Intn(size)
 	// Make sure the two nodes are different
 	for index1 == index2 {
 		index2 = rand.Intn(size)
