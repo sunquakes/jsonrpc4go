@@ -30,13 +30,14 @@ func GetHostname() (string, error) {
 		}
 	}
 	if hostname == "" {
-		return hostname, errors.New("Failed to get hostname.")
+		return hostname, errors.New("failed to get hostname")
 	}
 	return hostname, nil
 }
 
 type Http struct {
-	Port int
+	Port   int
+	Secure bool
 }
 
 type HttpServer struct {
@@ -46,9 +47,12 @@ type HttpServer struct {
 	Options   HttpOptions
 	Event     chan int
 	Discovery discovery.Driver
+	Secure    bool
 }
 
 type HttpOptions struct {
+	CertPath string
+	KeyPath  string
 }
 
 func (p *Http) NewServer() Server {
@@ -64,10 +68,14 @@ func (p *Http) NewServer() Server {
 		Options:   options,
 		Event:     make(chan int, 1),
 		Discovery: nil,
+		Secure:    p.Secure,
 	}
 }
 
 func (s *HttpServer) Start() {
+	if s.Secure && (s.Options.CertPath == "" || s.Options.KeyPath == "") {
+		log.Panic("CertPath or KeyPath is empty.")
+	}
 	// Register services
 	if s.Discovery != nil {
 		register := func(key, value interface{}) bool {
@@ -79,9 +87,18 @@ func (s *HttpServer) Start() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleFunc)
 	var url = fmt.Sprintf("0.0.0.0:%d", s.Port)
-	log.Printf("Listening http://0.0.0.0:%d", s.Port)
+	if s.Secure {
+		log.Printf("Listening https://0.0.0.0:%d", s.Port)
+	} else {
+		log.Printf("Listening http://0.0.0.0:%d", s.Port)
+	}
 	s.Event <- 0
-	err := http.ListenAndServe(url, mux)
+	var err error
+	if s.Secure {
+		err = http.ListenAndServeTLS(url, s.Options.CertPath, s.Options.KeyPath, mux)
+	} else {
+		err = http.ListenAndServe(url, mux)
+	}
 	if err != nil {
 		log.Panic(err.Error())
 	}

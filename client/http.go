@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -29,11 +30,16 @@ type HttpClient struct {
 	Discovery   discovery.Driver
 	AddressList []*AddressInfo
 	RequestList []*common.SingleRequest
+	Options     *HttpOptions
 }
 
 type AddressInfo struct {
 	Address string
 	Load    int
+}
+
+type HttpOptions struct {
+	CaPath string
 }
 
 func (p *Http) NewClient() Client {
@@ -48,6 +54,7 @@ func NewHttpClient(name string, protocol string, address string, dc discovery.Dr
 		dc,
 		nil,
 		nil,
+		nil,
 	}
 	c.SetAddressList()
 	return c
@@ -55,6 +62,7 @@ func NewHttpClient(name string, protocol string, address string, dc discovery.Dr
 
 func (c *HttpClient) SetOptions(httpOptions any) {
 	// Set http request options.
+	c.Options = httpOptions.(*HttpOptions)
 }
 
 func (c *HttpClient) SetPoolOptions(httpOptions any) {
@@ -117,7 +125,15 @@ func (c *HttpClient) handleFunc(b []byte, result any) error {
 		return err
 	}
 	url := fmt.Sprintf("%s://%s", c.Protocol, address)
-	resp, err := http.Post(url, "application/json", bytes.NewReader(b))
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	client := &http.Client{Transport: transport}
+
+	resp, err := client.Post(url, "application/json", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
