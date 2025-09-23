@@ -13,13 +13,13 @@ func TestHttpsCall(t *testing.T) {
 	s, _ := jsonrpc4go.NewServer("https", 3621)
 	s.Register(new(IntRpc))
 	go func() {
-		s.SetOptions(server.HttpOptions{KeyPath: "E:\\ruixinglong\\jsonrpc4go\\test\\secure\\server.key", CertPath: "E:\\ruixinglong\\jsonrpc4go\\test\\secure\\server.crt"})
+		s.SetOptions(server.HttpOptions{KeyPath: "./secure/localhost+2-key.pem", CertPath: "./secure/localhost+2.pem"})
 		s.Start()
 	}()
 	<-s.GetEvent()
-	time.Sleep(time.Duration(3600) * time.Second)
+	time.Sleep(time.Duration(3) * time.Second)
 	c, _ := jsonrpc4go.NewClient("IntRpc", "https", "127.0.0.1:3621")
-	c.SetOptions(&client.HttpOptions{CaPath: "E:\\ruixinglong\\jsonrpc4go\\test\\secure\\ca.cer"})
+	c.SetOptions(&client.HttpOptions{CaPath: "./secure/rootCA.pem"})
 	params := Params{1, 2}
 	result := new(Result)
 	_ = c.Call("Add", &params, result, false)
