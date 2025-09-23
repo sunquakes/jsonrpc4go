@@ -2,7 +2,6 @@ package client
 
 import (
 	"bytes"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -91,7 +90,7 @@ func (c *HttpClient) BatchCall() error {
 			req any
 		)
 		method := fmt.Sprintf("%s/%s", c.Name, v.Method)
-		if v.IsNotify == true {
+		if v.IsNotify {
 			req = common.Rs(nil, method, v.Params)
 		} else {
 			req = common.Rs(strconv.FormatInt(time.Now().Unix(), 10), method, v.Params)
@@ -125,11 +124,7 @@ func (c *HttpClient) handleFunc(b []byte, result any) error {
 		return err
 	}
 	url := fmt.Sprintf("%s://%s", c.Protocol, address)
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
+	transport := &http.Transport{}
 
 	client := &http.Client{Transport: transport}
 
