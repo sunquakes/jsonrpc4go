@@ -38,7 +38,7 @@ func (p *Tcp) NewClient() Client {
 }
 
 func NewTcpClient(name string, protocol string, address string, dc discovery.Driver) *TcpClient {
-	options := TcpOptions{
+	options := &TcpOptions{
 		"\r\n",
 		1024 * 1024 * 2,
 	}
@@ -49,7 +49,7 @@ func NewTcpClient(name string, protocol string, address string, dc discovery.Dri
 		Address:     address,
 		Discovery:   dc,
 		RequestList: nil,
-		Options:     options,
+		Options:     *options,
 		Pool:        pool,
 	}
 }
