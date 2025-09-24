@@ -1,3 +1,10 @@
+## [v1.6.7] - 2025-09-24
+
+### Added
+- Added https support.
+
+---
+
 ## [v1.6.6] - 2025-05-28
 
 ### Modified
