@@ -2,17 +2,25 @@ package client
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/discovery"
+)
+
+const (
+	HTTP_PROTOCOL  = "http"
+	HTTPS_PROTOCOL = "https"
 )
 
 type Http struct {
@@ -38,7 +46,8 @@ type AddressInfo struct {
 }
 
 type HttpOptions struct {
-	CaPath string
+	CaPath          string
+	TLSClientConfig *tls.Config
 }
 
 func (p *Http) NewClient() Client {
@@ -62,6 +71,22 @@ func NewHttpClient(name string, protocol string, address string, dc discovery.Dr
 func (c *HttpClient) SetOptions(httpOptions any) {
 	// Set http request options.
 	c.Options = httpOptions.(*HttpOptions)
+	if c.Protocol == HTTPS_PROTOCOL && c.Options != nil && c.Options.CaPath != "" {
+		file, err := os.Open(c.Options.CaPath)
+		if err != nil {
+			return
+		}
+		defer file.Close()
+		caCert, err := io.ReadAll(file)
+		if err != nil {
+			return
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+		c.Options.TLSClientConfig = &tls.Config{
+			RootCAs: caCertPool,
+		}
+	}
 }
 
 func (c *HttpClient) SetPoolOptions(httpOptions any) {
@@ -125,9 +150,10 @@ func (c *HttpClient) handleFunc(b []byte, result any) error {
 	}
 	url := fmt.Sprintf("%s://%s", c.Protocol, address)
 	transport := &http.Transport{}
-
+	if c.Protocol == HTTPS_PROTOCOL && c.Options != nil && c.Options.TLSClientConfig != nil {
+		transport.TLSClientConfig = c.Options.TLSClientConfig
+	}
 	client := &http.Client{Transport: transport}
-
 	resp, err := client.Post(url, "application/json", bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -176,7 +202,6 @@ func (c *HttpClient) GetAddress() (string, error) {
 		return c.AddressList[0].Address, nil
 	}
 	// Randomly select two nodes
-	// 初始化随机数生成器，确保每次运行程序时结果不同
 	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
 	index1 := randSource.Intn(size)
 	index2 := randSource.Intn(size)
