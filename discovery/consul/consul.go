@@ -96,27 +96,38 @@ func (d *Consul) Register(name string, protocol string, hostname string, port in
 	return nil
 }
 
+const (
+	CHECK_TRUE           = "true"
+	DEFAULT_INTERVAL     = "30s"
+	DEFAULT_TIMEOUT      = "10s"
+	PROTOCOL_HTTP        = "http"
+	PROTOCOL_HTTPS       = "https"
+	PROTOCOL_TCP         = "tcp"
+	CHECK_STATUS_PASSING = "passing"
+)
+
 func (d *Consul) Check(ID string, name string, protocol string, hostname string, port int) error {
 	check := d.URL.Query().Get("check")
-	if check == "true" {
+	if check == CHECK_TRUE {
 		interval := d.URL.Query().Get("interval")
 		if interval == "" {
-			interval = "30s"
+			interval = DEFAULT_INTERVAL
 		}
 		timeout := d.URL.Query().Get("timeout")
 		if timeout == "" {
-			timeout = "10s"
+			timeout = DEFAULT_TIMEOUT
 		}
 		var http, method, tcp string
-		if protocol == "http" || protocol == "https" {
+		switch protocol {
+		case PROTOCOL_HTTP, PROTOCOL_HTTPS:
 			http = fmt.Sprintf("%s://%s:%d", protocol, hostname, port)
-		} else if protocol == "tcp" {
+		case PROTOCOL_TCP:
 			tcp = fmt.Sprintf("%s:%d", hostname, port)
 		}
 		check := &Check{
 			ID,
 			name,
-			"passing",
+			CHECK_STATUS_PASSING,
 			ID,
 			http,
 			method,

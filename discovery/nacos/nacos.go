@@ -88,7 +88,7 @@ func (d *Nacos) Register(name string, protocol string, hostname string, port int
 		}
 		return errors.New(string(body))
 	}
-	if d.Ephemeral == "true" {
+	if d.Ephemeral == IS_EPHEMERAL {
 		if len(d.HeartbeatList) == 0 {
 			d.Heartbeat()
 		}
@@ -169,11 +169,10 @@ func (d *Nacos) Beat(name string, hostname string, port int) error {
 
 func (d *Nacos) Heartbeat() error {
 	go func() {
-		for {
-			select {
-			case <-time.After(time.Second * HEARTBEAT_INTERVAL):
-				d.DoHeartbeat()
-			}
+		ticker := time.NewTicker(time.Second * HEARTBEAT_INTERVAL)
+		defer ticker.Stop()
+		for range ticker.C {
+			d.DoHeartbeat()
 		}
 	}()
 	return nil

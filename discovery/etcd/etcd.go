@@ -4,18 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go/discovery"
-	"github.com/sunquakes/jsonrpc4go/discovery/etcd/etcdserverpb"
-	"google.golang.org/grpc"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sunquakes/jsonrpc4go/discovery"
+	"github.com/sunquakes/jsonrpc4go/discovery/etcd/etcdserverpb"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
-	TTL      = 10
-	INTERVAL = 5 * time.Second
+	TTL            = 10
+	INTERVAL       = 5 * time.Second
+	PROTOCOL_HTTP  = "http"
+	PROTOCOL_HTTPS = "https"
 )
 
 type Etcd struct {
@@ -36,7 +40,7 @@ func NewEtcd(rawURL string) (discovery.Driver, error) {
 		return nil, err
 	}
 	// Create a connection to the etcd server
-	conn, err := grpc.Dial(URL.Host, grpc.WithInsecure())
+	conn, err := grpc.NewClient(URL.Host, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +51,7 @@ func NewEtcd(rawURL string) (discovery.Driver, error) {
 
 func (d *Etcd) Register(name string, protocol string, hostname string, port int) error {
 	var addr string
-	if protocol == "http" || protocol == "https" {
+	if protocol == PROTOCOL_HTTP || protocol == PROTOCOL_HTTPS {
 		addr = fmt.Sprintf("%s://%s:%d", protocol, hostname, port)
 	} else {
 		addr = fmt.Sprintf("%s:%d", hostname, port)
@@ -115,6 +119,8 @@ func (d *Etcd) SendHeartbeat(f func()) {
 			select {
 			case <-d.Heartbeat:
 				f()
+			case <-context.Background().Done():
+				return
 			}
 		}
 	}()

@@ -88,7 +88,7 @@ func FilterRequestBody(jsonMap map[string]any) map[string]any {
 
 func ParseSingleRequestBody(jsonMap map[string]any) (id any, jsonrpc string, method string, params any, errCode int) {
 	jsonMap = FilterRequestBody(jsonMap)
-	if _, ok := jsonMap["id"]; ok != true {
+	if _, ok := jsonMap["id"]; !ok {
 		st := NotifyRequest{}
 		err := GetStruct(jsonMap, &st)
 		if err != nil {
@@ -130,30 +130,28 @@ func GetStruct(d any, s any) error {
 	switch reflect.TypeOf(d).Kind() {
 	case reflect.Map:
 		if t.NumField() != len(d.(map[string]any)) {
-			m = fmt.Sprintf("json: The number of parameters does not match")
+			m = "json: The number of parameters does not match"
 			Debug(m)
 			return errors.New(m)
 		}
 		for k := 0; k < t.NumField(); k++ {
 			lk := strings.ToLower(t.Field(k).Name)
-			if _, ok := d.(map[string]any)[lk]; ok != true {
+			if _, ok := d.(map[string]any)[lk]; !ok {
 				m = fmt.Sprintf("json: can not find field \"%s\"", lk)
 				Debug(m)
 				return errors.New(m)
 			}
 		}
 		jsonMap = d.(map[string]any)
-		break
 	case reflect.Slice:
 		if t.NumField() != reflect.ValueOf(d).Len() {
-			m = fmt.Sprintf("json: The number of parameters does not match")
+			m = "json: The number of parameters does not match"
 			Debug(m)
 			return errors.New(m)
 		}
 		for k := 0; k < t.NumField(); k++ {
 			jsonMap[t.Field(k).Name] = reflect.ValueOf(d).Index(k).Interface()
 		}
-		break
 	default:
 		break
 	}
