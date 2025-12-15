@@ -193,7 +193,7 @@ func (svr *Server) Before(id any, mName string, params any) error {
 
 func (svr *Server) After(id any, mName string, result any) error {
 	if svr.Hooks.AfterFunc != nil {
-		err := svr.Hooks.AfterFunc(id, mName, result.(any))
+		err := svr.Hooks.AfterFunc(id, mName, result)
 		if err != nil {
 			return err
 		}
