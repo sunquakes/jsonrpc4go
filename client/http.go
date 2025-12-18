@@ -23,6 +23,13 @@ const (
 	HTTPS_PROTOCOL = "https"
 )
 
+/*
+ * Http represents the HTTP protocol implementation
+ * @property Name - The name of the service
+ * @property Protocol - The protocol to use (http or https)
+ * @property Address - The address of the service
+ * @property Discovery - The service discovery driver
+ */
 type Http struct {
 	Name      string
 	Protocol  string
@@ -30,6 +37,16 @@ type Http struct {
 	Discovery discovery.Driver
 }
 
+/*
+ * HttpClient represents the HTTP client implementation
+ * @property Name - The name of the service
+ * @property Protocol - The protocol to use (http or https)
+ * @property Address - The address of the service
+ * @property Discovery - The service discovery driver
+ * @property AddressList - The list of addresses for load balancing
+ * @property RequestList - The list of requests for batch calls
+ * @property Options - The HTTP client options
+ */
 type HttpClient struct {
 	Name        string
 	Protocol    string
@@ -40,20 +57,42 @@ type HttpClient struct {
 	Options     *HttpOptions
 }
 
+/*
+ * AddressInfo represents address information for load balancing
+ * @property Address - The address of the service
+ * @property Load - The load of the service
+ */
 type AddressInfo struct {
 	Address string
 	Load    int
 }
 
+/*
+ * HttpOptions represents the options for the HTTP client
+ * @property CaPath - The path to the CA file
+ * @property TLSClientConfig - The TLS client configuration
+ */
 type HttpOptions struct {
 	CaPath          string
 	TLSClientConfig *tls.Config
 }
 
+/*
+ * NewClient creates a new HTTP client
+ * @return Client - The new HTTP client
+ */
 func (p *Http) NewClient() Client {
 	return NewHttpClient(p.Name, p.Protocol, p.Address, p.Discovery)
 }
 
+/*
+ * NewHttpClient creates a new HTTP client
+ * @param name - The name of the service
+ * @param protocol - The protocol to use (http or https)
+ * @param address - The address of the service
+ * @param dc - The service discovery driver
+ * @return *HttpClient - The new HTTP client
+ */
 func NewHttpClient(name string, protocol string, address string, dc discovery.Driver) *HttpClient {
 	c := &HttpClient{
 		name,
@@ -68,6 +107,10 @@ func NewHttpClient(name string, protocol string, address string, dc discovery.Dr
 	return c
 }
 
+/*
+ * SetOptions sets the HTTP client options
+ * @param httpOptions - The HTTP client options
+ */
 func (c *HttpClient) SetOptions(httpOptions any) {
 	// Set http request options.
 	c.Options = httpOptions.(*HttpOptions)
@@ -89,10 +132,22 @@ func (c *HttpClient) SetOptions(httpOptions any) {
 	}
 }
 
+/*
+ * SetPoolOptions sets the HTTP pool options
+ * @param httpOptions - The HTTP pool options
+ */
 func (c *HttpClient) SetPoolOptions(httpOptions any) {
 	// Set http pool options.
 }
 
+/*
+ * BatchAppend appends a request to the batch
+ * @param method - The method to call
+ * @param params - The parameters for the method
+ * @param result - The result of the method
+ * @param isNotify - Whether the request is a notification
+ * @return *error - A pointer to the error
+ */
 func (c *HttpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
 	singleRequest := &common.SingleRequest{
 		Method:   method,
@@ -105,6 +160,10 @@ func (c *HttpClient) BatchAppend(method string, params any, result any, isNotify
 	return singleRequest.Error
 }
 
+/*
+ * BatchCall executes all requests in the batch
+ * @return error - An error if the batch call failed
+ */
 func (c *HttpClient) BatchCall() error {
 	var (
 		err error
@@ -128,6 +187,14 @@ func (c *HttpClient) BatchCall() error {
 	return err
 }
 
+/*
+ * Call executes a single request
+ * @param method - The method to call
+ * @param params - The parameters for the method
+ * @param result - The result of the method
+ * @param isNotify - Whether the request is a notification
+ * @return error - An error if the call failed
+ */
 func (c *HttpClient) Call(method string, params any, result any, isNotify bool) error {
 	var (
 		err error
@@ -143,6 +210,12 @@ func (c *HttpClient) Call(method string, params any, result any, isNotify bool) 
 	return err
 }
 
+/*
+ * handleFunc handles the HTTP request
+ * @param b - The request body
+ * @param result - The result of the request
+ * @return error - An error if the request failed
+ */
 func (c *HttpClient) handleFunc(b []byte, result any) error {
 	address, err := c.GetAddress()
 	if err != nil {
@@ -167,6 +240,9 @@ func (c *HttpClient) handleFunc(b []byte, result any) error {
 	return err
 }
 
+/*
+ * SetAddressList sets the address list from the discovery service
+ */
 func (c *HttpClient) SetAddressList() {
 	var (
 		err error
@@ -189,6 +265,11 @@ func (c *HttpClient) SetAddressList() {
 	c.AddressList = addressList
 }
 
+/*
+ * GetAddress gets an address from the address list using load balancing
+ * @return string - The address to use
+ * @return error - An error if no address is available
+ */
 func (c *HttpClient) GetAddress() (string, error) {
 	size := len(c.AddressList)
 	if size == 0 {

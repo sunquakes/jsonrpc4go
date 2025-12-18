@@ -19,6 +19,14 @@ var RequiredFields = map[string]string{
 	"params":  "params",
 }
 
+/**
+ * @Description: Single request structure
+ * @Field Method: Method name
+ * @Field Params: Parameters
+ * @Field Result: Result
+ * @Field Error: Error pointer
+ * @Field IsNotify: Whether it is a notification
+ */
 type SingleRequest struct {
 	Method   string
 	Params   any
@@ -27,6 +35,13 @@ type SingleRequest struct {
 	IsNotify bool
 }
 
+/**
+ * @Description: Request structure
+ * @Field Id: Request ID
+ * @Field JsonRpc: JSON-RPC version
+ * @Field Method: Method name
+ * @Field Params: Parameters
+ */
 type Request struct {
 	Id      string `json:"id"`
 	JsonRpc string `json:"jsonrpc"`
@@ -34,12 +49,25 @@ type Request struct {
 	Params  any    `json:"params"`
 }
 
+/**
+ * @Description: Notification request structure
+ * @Field JsonRpc: JSON-RPC version
+ * @Field Method: Method name
+ * @Field Params: Parameters
+ */
 type NotifyRequest struct {
 	JsonRpc string `json:"jsonrpc"`
 	Method  string `json:"method"`
 	Params  any    `json:"params"`
 }
 
+/**
+ * @Description: Parse request method name
+ * @Param method: Method name
+ * @Return sName: Service name
+ * @Return mName: Method name
+ * @Return err: Error message
+ */
 func ParseRequestMethod(method string) (sName string, mName string, err error) {
 	var (
 		m  string
@@ -77,6 +105,11 @@ func ParseRequestMethod(method string) (sName string, mName string, err error) {
 	return sName, mName, err
 }
 
+/**
+ * @Description: Filter request body
+ * @Param jsonMap: JSON map
+ * @Return map[string]any: Filtered JSON map
+ */
 func FilterRequestBody(jsonMap map[string]any) map[string]any {
 	for k := range jsonMap {
 		if _, ok := RequiredFields[k]; !ok {
@@ -86,6 +119,15 @@ func FilterRequestBody(jsonMap map[string]any) map[string]any {
 	return jsonMap
 }
 
+/**
+ * @Description: Parse single request body
+ * @Param jsonMap: JSON map
+ * @Return id: Request ID
+ * @Return jsonrpc: JSON-RPC version
+ * @Return method: Method name
+ * @Return params: Parameters
+ * @Return errCode: Error code
+ */
 func ParseSingleRequestBody(jsonMap map[string]any) (id any, jsonrpc string, method string, params any, errCode int) {
 	jsonMap = FilterRequestBody(jsonMap)
 	if _, ok := jsonMap["id"]; !ok {
@@ -105,6 +147,12 @@ func ParseSingleRequestBody(jsonMap map[string]any) (id any, jsonrpc string, met
 	}
 }
 
+/**
+ * @Description: Parse request body
+ * @Param b: Request data
+ * @Return any: Parsed data
+ * @Return error: Error message
+ */
 func ParseRequestBody(b []byte) (any, error) {
 	var err error
 	var jsonData any
@@ -115,6 +163,12 @@ func ParseRequestBody(b []byte) (any, error) {
 	return jsonData, err
 }
 
+/**
+ * @Description: Get struct
+ * @Param d: Data
+ * @Param s: Struct pointer
+ * @Return error: Error message
+ */
 func GetStruct(d any, s any) error {
 	var (
 		m string
@@ -168,6 +222,13 @@ func GetStruct(d any, s any) error {
 	return nil
 }
 
+/**
+ * @Description: Create request
+ * @Param id: Request ID
+ * @Param method: Method name
+ * @Param params: Parameters
+ * @Return any: Request structure
+ */
 func Rs(id any, method string, params any) any {
 	var req any
 	if id != nil {
@@ -178,11 +239,23 @@ func Rs(id any, method string, params any) any {
 	return req
 }
 
+/**
+ * @Description: Create JSON request
+ * @Param id: Request ID
+ * @Param method: Method name
+ * @Param params: Parameters
+ * @Return []byte: JSON request data
+ */
 func JsonRs(id any, method string, params any) []byte {
 	e, _ := json.Marshal(Rs(id, method, params))
 	return e
 }
 
+/**
+ * @Description: Create JSON batch request
+ * @Param data: Request data list
+ * @Return []byte: JSON batch request data
+ */
 func JsonBatchRs(data []any) []byte {
 	e, _ := json.Marshal(data)
 	return e

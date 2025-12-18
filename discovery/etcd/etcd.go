@@ -15,25 +15,56 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-var (
-	TTL            = 10
-	INTERVAL       = 5 * time.Second
-	PROTOCOL_HTTP  = "http"
-	PROTOCOL_HTTPS = "https"
-)
+/**
+ * @Description: Lease TTL (seconds)
+ */
+var TTL int = 10
 
+/**
+ * @Description: Heartbeat interval
+ */
+var INTERVAL time.Duration = 5 * time.Second
+
+/**
+ * @Description: HTTP protocol
+ */
+var PROTOCOL_HTTP string = "http"
+
+/**
+ * @Description: HTTPS protocol
+ */
+var PROTOCOL_HTTPS string = "https"
+
+/**
+ * @Description: Etcd client structure, implements discovery.Driver interface
+ * @Field URL: Etcd server URL address
+ * @Field Conn: gRPC connection
+ * @Field Heartbeat: Heartbeat channel
+ */
 type Etcd struct {
 	URL       *url.URL
 	Conn      *grpc.ClientConn
 	Heartbeat chan bool
 }
 
+/**
+ * @Description: Service structure
+ * @Field UniqueId: Unique identifier
+ * @Field Name: Service name
+ * @Field Addr: Service address
+ */
 type Service struct {
 	UniqueId string
 	Name     string
 	Addr     string
 }
 
+/**
+ * @Description: Create Etcd client instance
+ * @Param rawURL: Etcd server URL address
+ * @Return discovery.Driver: Service discovery driver instance
+ * @Return error: Error message
+ */
 func NewEtcd(rawURL string) (discovery.Driver, error) {
 	URL, err := url.Parse(rawURL)
 	if err != nil {
@@ -49,6 +80,15 @@ func NewEtcd(rawURL string) (discovery.Driver, error) {
 	return etcd, nil
 }
 
+/**
+ * @Description: Register service
+ * @Receiver d: Etcd structure pointer
+ * @Param name: Service name
+ * @Param protocol: Protocol type
+ * @Param hostname: Hostname
+ * @Param port: Port number
+ * @Return error: Error message
+ */
 func (d *Etcd) Register(name string, protocol string, hostname string, port int) error {
 	var addr string
 	if protocol == PROTOCOL_HTTP || protocol == PROTOCOL_HTTPS {
@@ -88,6 +128,13 @@ func (d *Etcd) Register(name string, protocol string, hostname string, port int)
 	return nil
 }
 
+/**
+ * @Description: Get service address list
+ * @Receiver d: Etcd structure pointer
+ * @Param name: Service name
+ * @Return string: Service address list (comma separated)
+ * @Return error: Error message
+ */
 func (d *Etcd) Get(name string) (string, error) {
 	// Create a KV client
 	kvClient := etcdserverpb.NewKVClient(d.Conn)
@@ -107,6 +154,11 @@ func (d *Etcd) Get(name string) (string, error) {
 	return strings.Join(servers, ","), nil
 }
 
+/**
+ * @Description: Send heartbeat
+ * @Receiver d: Etcd structure pointer
+ * @Param f: Heartbeat callback function
+ */
 func (d *Etcd) SendHeartbeat(f func()) {
 	go func() {
 		for {

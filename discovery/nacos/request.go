@@ -4,6 +4,14 @@ import (
 	"net/url"
 )
 
+/**
+ * @Description: Build Nacos API URL address
+ * @Param rawURL: Base URL address
+ * @Param path: API path
+ * @Param query: Query parameters
+ * @Return string: Complete API URL address
+ * @Return error: Error message
+ */
 func GetURL(rawURL string, path string, query map[string]string) (string, error) {
 	URL, err := url.Parse(rawURL)
 	URL.Path = path

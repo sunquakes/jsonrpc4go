@@ -14,14 +14,39 @@ import (
 	"github.com/sunquakes/jsonrpc4go/discovery"
 )
 
+/**
+ * @Description: Whether it is an ephemeral instance
+ */
 const IS_EPHEMERAL = "true"
+
+/**
+ * @Description: Heartbeat interval (seconds)
+ */
 const HEARTBEAT_INTERVAL = 5
+
+/**
+ * @Description: Maximum heartbeat retry times
+ */
 const HEARTBEAT_RETRY_MAX = 3
 
+/**
+ * @Description: Read HTTP response body
+ * @Param body: HTTP response body
+ * @Return []byte: Response body content
+ * @Return error: Error message
+ */
 func ReadAll(body io.ReadCloser) ([]byte, error) {
 	return io.ReadAll(body)
 }
 
+/**
+ * @Description: Nacos client structure, implements discovery.Driver interface
+ * @Field URL: Nacos server URL address
+ * @Field Token: Authentication token
+ * @Field Ephemeral: Whether it is an ephemeral instance
+ * @Field HeartbeatList: Heartbeat service list
+ * @Field HeartbeatRetry: Heartbeat retry count
+ */
 type Nacos struct {
 	URL            *url.URL
 	Token          string
@@ -30,10 +55,21 @@ type Nacos struct {
 	HeartbeatRetry map[string]int
 }
 
+/**
+ * @Description: Get service list response structure
+ * @Field Hosts: Service list
+ */
 type GetResp struct {
 	Hosts []Service `json:"hosts"`
 }
 
+/**
+ * @Description: Service instance structure
+ * @Field Ip: Service IP address
+ * @Field Port: Service port number
+ * @Field Healthy: Whether healthy
+ * @Field InstanceId: Instance ID
+ */
 type Service struct {
 	Ip         string `json:"ip"`
 	Port       int    `json:"port"`
@@ -41,6 +77,12 @@ type Service struct {
 	InstanceId string `json:"instanceId"`
 }
 
+/**
+ * @Description: Create Nacos client instance
+ * @Param rawURL: Nacos server URL address
+ * @Return discovery.Driver: Service discovery driver instance
+ * @Return error: Error message
+ */
 func NewNacos(rawURL string) (discovery.Driver, error) {
 	URL, err := url.Parse(rawURL)
 	if err != nil {
@@ -55,6 +97,15 @@ func NewNacos(rawURL string) (discovery.Driver, error) {
 	return nacos, err
 }
 
+/**
+ * @Description: Register service
+ * @Receiver d: Nacos structure pointer
+ * @Param name: Service name
+ * @Param protocol: Protocol type
+ * @Param hostname: Hostname
+ * @Param port: Port number
+ * @Return error: Error message
+ */
 func (d *Nacos) Register(name string, protocol string, hostname string, port int) error {
 	query := make(map[string]string)
 	// Get the instanceId from url
@@ -97,6 +148,13 @@ func (d *Nacos) Register(name string, protocol string, hostname string, port int
 	return nil
 }
 
+/**
+ * @Description: Get service address list
+ * @Receiver d: Nacos structure pointer
+ * @Param name: Service name
+ * @Return string: Service address list (comma separated)
+ * @Return error: Error message
+ */
 func (d *Nacos) Get(name string) (string, error) {
 	query := make(map[string]string)
 	query["serviceName"] = name
@@ -131,6 +189,14 @@ func (d *Nacos) Get(name string) (string, error) {
 	return strings.Join(ua, ","), err
 }
 
+/**
+ * @Description: Send heartbeat
+ * @Receiver d: Nacos structure pointer
+ * @Param name: Service name
+ * @Param hostname: Hostname
+ * @Param port: Port number
+ * @Return error: Error message
+ */
 func (d *Nacos) Beat(name string, hostname string, port int) error {
 	query := make(map[string]string)
 	// Get the instanceId from url
@@ -167,6 +233,11 @@ func (d *Nacos) Beat(name string, hostname string, port int) error {
 	return nil
 }
 
+/**
+ * @Description: Start heartbeat mechanism
+ * @Receiver d: Nacos structure pointer
+ * @Return error: Error message
+ */
 func (d *Nacos) Heartbeat() error {
 	go func() {
 		ticker := time.NewTicker(time.Second * HEARTBEAT_INTERVAL)
@@ -178,6 +249,10 @@ func (d *Nacos) Heartbeat() error {
 	return nil
 }
 
+/**
+ * @Description: Execute heartbeat
+ * @Receiver d: Nacos structure pointer
+ */
 func (d *Nacos) DoHeartbeat() {
 	for _, service := range d.HeartbeatList {
 		err := d.Beat(service.InstanceId, service.Ip, service.Port)
@@ -188,6 +263,11 @@ func (d *Nacos) DoHeartbeat() {
 	}
 }
 
+/**
+ * @Description: Retry heartbeat
+ * @Receiver d: Nacos structure pointer
+ * @Param key: Service instance identifier (ip-port)
+ */
 func (d *Nacos) RetryHeartbeat(key string) {
 	if times, ok := d.HeartbeatRetry[key]; ok {
 		if times >= HEARTBEAT_RETRY_MAX {
@@ -200,6 +280,11 @@ func (d *Nacos) RetryHeartbeat(key string) {
 	}
 }
 
+/**
+ * @Description: Remove heartbeat service
+ * @Receiver d: Nacos structure pointer
+ * @Param key: Service instance identifier (ip-port)
+ */
 func (d *Nacos) RemoveHeartbeat(key string) {
 	for i, service := range d.HeartbeatList {
 		if fmt.Sprintf("%s-%d", service.Ip, service.Port) == key {

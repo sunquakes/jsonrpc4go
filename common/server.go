@@ -11,6 +11,15 @@ import (
 	"golang.org/x/time/rate"
 )
 
+/*
+ * Method represents a JSON-RPC method definition.
+ *
+ * Fields:
+ *   Name       string        - Method name
+ *   ParamsType reflect.Type  - Type of the method parameters
+ *   ResultType reflect.Type  - Type of the method result
+ *   Method     reflect.Method - Reflect method object
+ */
 type Method struct {
 	Name       string
 	ParamsType reflect.Type
@@ -18,6 +27,15 @@ type Method struct {
 	Method     reflect.Method
 }
 
+/*
+ * Service represents a JSON-RPC service containing multiple methods.
+ *
+ * Fields:
+ *   Name string           - Service name
+ *   V    reflect.Value    - Reflect value of the service instance
+ *   T    reflect.Type     - Reflect type of the service instance
+ *   Mm   map[string]*Method - Map of method names to Method objects
+ */
 type Service struct {
 	Name string
 	V    reflect.Value
@@ -25,17 +43,41 @@ type Service struct {
 	Mm   map[string]*Method
 }
 
+/*
+ * Server represents a JSON-RPC server that handles requests and dispatches them to services.
+ *
+ * Fields:
+ *   Sm          sync.Map      - Map of service names to Service objects
+ *   Hooks       Hooks         - Before and after function hooks
+ *   RateLimiter *rate.Limiter - Rate limiter for request throttling
+ */
 type Server struct {
 	Sm          sync.Map
 	Hooks       Hooks
 	RateLimiter *rate.Limiter
 }
 
+/*
+ * Hooks contains callback functions that are executed before and after method calls.
+ *
+ * Fields:
+ *   BeforeFunc func(id any, method string, params any) error - Function called before processing a request
+ *   AfterFunc  func(id any, method string, result any) error - Function called after processing a request
+ */
 type Hooks struct {
 	BeforeFunc func(id any, method string, params any) error
 	AfterFunc  func(id any, method string, result any) error
 }
 
+/*
+ * Register registers a service with the server.
+ *
+ * Parameters:
+ *   s any - Service instance to register
+ *
+ * Returns:
+ *   error - Error if the service is already registered
+ */
 func (svr *Server) Register(s any) error {
 	svc := new(Service)
 	svc.V = reflect.ValueOf(s)
@@ -49,6 +91,15 @@ func (svr *Server) Register(s any) error {
 	return nil
 }
 
+/*
+ * RegisterMethods registers all public methods of a service type.
+ *
+ * Parameters:
+ *   s reflect.Type - Reflect type of the service
+ *
+ * Returns:
+ *   map[string]*Method - Map of method names to Method objects
+ */
 func RegisterMethods(s reflect.Type) map[string]*Method {
 	mm := make(map[string]*Method)
 	for m := range s.NumMethod() {
@@ -60,6 +111,15 @@ func RegisterMethods(s reflect.Type) map[string]*Method {
 	return mm
 }
 
+/*
+ * RegisterMethod registers a single method if it conforms to the JSON-RPC method signature.
+ *
+ * Parameters:
+ *   rm reflect.Method - Reflect method to register
+ *
+ * Returns:
+ *   *Method - Method object if registration succeeds, nil otherwise
+ */
 func RegisterMethod(rm reflect.Method) *Method {
 	var (
 		msg string
@@ -99,6 +159,15 @@ func RegisterMethod(rm reflect.Method) *Method {
 	return m
 }
 
+/*
+ * Handler handles JSON-RPC requests and returns responses.
+ *
+ * Parameters:
+ *   b []byte - JSON-RPC request data
+ *
+ * Returns:
+ *   []byte - JSON-RPC response data
+ */
 func (svr *Server) Handler(b []byte) []byte {
 	data, err := ParseRequestBody(b)
 	if err != nil {
@@ -123,6 +192,15 @@ func (svr *Server) Handler(b []byte) []byte {
 	return response
 }
 
+/*
+ * SingleHandler handles a single JSON-RPC request.
+ *
+ * Parameters:
+ *   jsonMap map[string]any - Parsed JSON-RPC request
+ *
+ * Returns:
+ *   any - JSON-RPC response object
+ */
 func (svr *Server) SingleHandler(jsonMap map[string]any) any {
 	id, jsonRpc, method, paramsData, errCode := ParseSingleRequestBody(jsonMap)
 	if errCode != WithoutError {
@@ -130,12 +208,9 @@ func (svr *Server) SingleHandler(jsonMap map[string]any) any {
 	}
 
 	if svr.RateLimiter != nil && !svr.RateLimiter.Allow() {
-		return CE(id, JsonRpc, "Too many requests")
+		return CE(id, jsonRpc, "Too many requests")
 	}
 
-	//if jsonRpc != JsonRpc {
-	//	return E(id, jsonRpc, InvalidRequest)
-	//}
 	sName, mName, err := ParseRequestMethod(method)
 	if err != nil {
 		return E(id, jsonRpc, MethodNotFound)
@@ -181,9 +256,20 @@ func (svr *Server) SingleHandler(jsonMap map[string]any) any {
 	return S(id, jsonRpc, result.Elem().Interface())
 }
 
-func (svr *Server) Before(id any, mName string, params any) error {
+/*
+ * Before executes the before hook function if it exists.
+ *
+ * Parameters:
+ *   id     any    - Request ID
+ *   method string - Method name
+ *   params any    - Request parameters
+ *
+ * Returns:
+ *   error - Error from the hook function if it fails
+ */
+func (svr *Server) Before(id any, method string, params any) error {
 	if svr.Hooks.BeforeFunc != nil {
-		err := svr.Hooks.BeforeFunc(id, mName, params)
+		err := svr.Hooks.BeforeFunc(id, method, params)
 		if err != nil {
 			return err
 		}
@@ -191,9 +277,20 @@ func (svr *Server) Before(id any, mName string, params any) error {
 	return nil
 }
 
-func (svr *Server) After(id any, mName string, result any) error {
+/*
+ * After executes the after hook function if it exists.
+ *
+ * Parameters:
+ *   id     any    - Request ID
+ *   method string - Method name
+ *   result any    - Request result
+ *
+ * Returns:
+ *   error - Error from the hook function if it fails
+ */
+func (svr *Server) After(id any, method string, result any) error {
 	if svr.Hooks.AfterFunc != nil {
-		err := svr.Hooks.AfterFunc(id, mName, result)
+		err := svr.Hooks.AfterFunc(id, method, result)
 		if err != nil {
 			return err
 		}
@@ -201,6 +298,15 @@ func (svr *Server) After(id any, mName string, result any) error {
 	return nil
 }
 
+/*
+ * lineToHump converts a snake_case string to camelCase.
+ *
+ * Parameters:
+ *   in string - Input snake_case string
+ *
+ * Returns:
+ *   string - camelCase string
+ */
 func lineToHump(in string) string {
 	s := strings.Split(in, "_")
 	for k, v := range s {
@@ -209,6 +315,15 @@ func lineToHump(in string) string {
 	return strings.Join(s, "")
 }
 
+/*
+ * Capitalize capitalizes the first letter of a string.
+ *
+ * Parameters:
+ *   str string - Input string
+ *
+ * Returns:
+ *   string - String with first letter capitalized
+ */
 func Capitalize(str string) string {
 	var upperStr string
 	vv := []rune(str)
@@ -225,4 +340,4 @@ func Capitalize(str string) string {
 		}
 	}
 	return upperStr
-}
+}
