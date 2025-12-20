@@ -124,7 +124,15 @@ func (s *HttpServer) Start() {
 	} else {
 		log.Printf("Listening http://0.0.0.0:%d", s.Port)
 	}
-	s.Event <- 0
+	// Notify successful start: send 0 to the Event channel after 1 second to indicate the service is ready
+	go func() {
+		time.Sleep(time.Second)
+		select {
+		case s.Event <- 0:
+		default:
+			// Drop if the channel is full to avoid blocking
+		}
+	}()
 	var err error
 	if s.Secure {
 		err = http.ListenAndServeTLS(url, s.Options.CertPath, s.Options.KeyPath, mux)

@@ -44,7 +44,6 @@ func TestHttpCall(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	time.Sleep(time.Duration(2) * time.Second)
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3201")
 	params := Params{1, 2}
 	result := new(Result)
@@ -61,7 +60,6 @@ func TestHttpCallMethod(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	time.Sleep(time.Duration(2) * time.Second)
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3202")
 	params := Params{1, 2}
 	result := new(Result)
@@ -144,14 +142,13 @@ func TestHttpConsul(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	s, _ := jsonrpc4go.NewServer("http", 3615)
+	s.SetDiscovery(dc, "")
+	s.Register(new(IntRpc))
 	go func() {
-		s, _ := jsonrpc4go.NewServer("http", 3615)
-		s.SetDiscovery(dc, "")
-		s.Register(new(IntRpc))
 		s.Start()
 	}()
-	time.Sleep(time.Duration(2) * time.Second)
-
+	<-s.GetEvent()
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", dc)
 	params := Params{10, 11}
 	result := new(Result)
@@ -170,14 +167,13 @@ func TestHttpNacos(t *testing.T) {
 	if err != nil {
 		t.Error(err.Error())
 	}
+	s, _ := jsonrpc4go.NewServer("http", 3617)
+	s.SetDiscovery(dc, "")
+	s.Register(new(IntRpc))
 	go func() {
-		s, _ := jsonrpc4go.NewServer("http", 3617)
-		s.SetDiscovery(dc, "")
-		s.Register(new(IntRpc))
 		s.Start()
 	}()
-	time.Sleep(time.Duration(2) * time.Second)
-
+	<-s.GetEvent()
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", dc)
 	params := Params{10, 11}
 	result := new(Result)

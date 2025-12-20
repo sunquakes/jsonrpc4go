@@ -63,10 +63,12 @@ type Server struct {
  * Fields:
  *   BeforeFunc func(id any, method string, params any) error - Function called before processing a request
  *   AfterFunc  func(id any, method string, result any) error - Function called after processing a request
+ *   StartFunc  func() - Function called after server starts
  */
 type Hooks struct {
 	BeforeFunc func(id any, method string, params any) error
 	AfterFunc  func(id any, method string, result any) error
+	StartFunc  func()
 }
 
 /*

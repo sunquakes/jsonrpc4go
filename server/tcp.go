@@ -95,7 +95,15 @@ func (s *TcpServer) Start() {
 	log.Printf("Listening tcp://0.0.0.0:%d", s.Port)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	s.Event <- 0
+	// Notify successful start: send 0 to the Event channel after 1 second to indicate the service is ready
+	go func() {
+		time.Sleep(time.Second)
+		select {
+		case s.Event <- 0:
+		default:
+			// Drop if the channel is full to avoid blocking
+		}
+	}()
 	for {
 		conn, err := listener.AcceptTCP()
 		if err != nil {

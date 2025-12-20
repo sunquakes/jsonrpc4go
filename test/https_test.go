@@ -2,7 +2,6 @@ package test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/sunquakes/jsonrpc4go"
 	"github.com/sunquakes/jsonrpc4go/client"
@@ -17,7 +16,6 @@ func TestHttpsCall(t *testing.T) {
 		s.Start()
 	}()
 	<-s.GetEvent()
-	time.Sleep(time.Duration(3) * time.Second)
 	c, _ := jsonrpc4go.NewClient("IntRpc", "https", "127.0.0.1:3621")
 	c.SetOptions(&client.HttpOptions{CaPath: "./secure/rootCA.pem"})
 	params := Params{1, 2}
