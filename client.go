@@ -9,6 +9,14 @@ import (
 	"github.com/sunquakes/jsonrpc4go/discovery"
 )
 
+/**
+ * @Description: Create a new JSON-RPC client
+ * @Param name: Service name
+ * @Param protocol: Protocol type (http/https/tcp)
+ * @Param server: Service address (string) or service discovery driver (discovery.Driver)
+ * @Return client.Client: Client interface
+ * @Return error: Error message
+ */
 func NewClient(name string, protocol string, server any) (client.Client, error) {
 	var p client.Protocol
 	var (

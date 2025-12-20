@@ -7,6 +7,13 @@ import (
 	"github.com/sunquakes/jsonrpc4go/server"
 )
 
+/**
+ * @Description: Create a new JSON-RPC server
+ * @Param protocol: Protocol type (http/https/tcp)
+ * @Param port: Port number
+ * @Return server.Server: Server interface
+ * @Return error: Error message
+ */
 func NewServer(protocol string, port int) (server.Server, error) {
 	var p server.Protocol
 	switch strings.ToLower(protocol) {

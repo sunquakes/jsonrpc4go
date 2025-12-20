@@ -151,27 +151,27 @@ func (d *Consul) Register(name string, protocol string, hostname string, port in
  * @Description: Check enable flag
  */
 const (
-	CHECK_TRUE           = "true"
+	CHECK_TRUE = "true"
 	/**
 	 * @Description: Default check interval
 	 */
-	DEFAULT_INTERVAL     = "30s"
+	DEFAULT_INTERVAL = "30s"
 	/**
 	 * @Description: Default check timeout
 	 */
-	DEFAULT_TIMEOUT      = "10s"
+	DEFAULT_TIMEOUT = "10s"
 	/**
 	 * @Description: HTTP protocol
 	 */
-	PROTOCOL_HTTP        = "http"
+	PROTOCOL_HTTP = "http"
 	/**
 	 * @Description: HTTPS protocol
 	 */
-	PROTOCOL_HTTPS       = "https"
+	PROTOCOL_HTTPS = "https"
 	/**
 	 * @Description: TCP protocol
 	 */
-	PROTOCOL_TCP         = "tcp"
+	PROTOCOL_TCP = "tcp"
 	/**
 	 * @Description: Check status - passing
 	 */

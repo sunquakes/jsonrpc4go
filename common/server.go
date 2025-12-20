@@ -340,4 +340,4 @@ func Capitalize(str string) string {
 		}
 	}
 	return upperStr
-}
+}
