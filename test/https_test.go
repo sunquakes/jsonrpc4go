@@ -19,7 +19,7 @@ func TestHttpsCall(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "https", "127.0.0.1:3621")
 	c.SetOptions(&client.HttpOptions{CaPath: "./secure/rootCA.pem"})
 	params := Params{1, 2}
-	result := new(Result)
+	result := new(int)
 	_ = c.Call("Add", &params, result, false)
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
