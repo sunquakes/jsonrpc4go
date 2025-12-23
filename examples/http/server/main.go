@@ -14,8 +14,7 @@ type Result struct {
 }
 
 func (i *IntRpc) Add(params *Params, result *int) error {
-	a := params.A + params.B
-	*result = any(a).(int)
+	*result = params.A + params.B
 	return nil
 }
 

@@ -196,11 +196,8 @@ type LongParams struct {
 	B string `json:"b"`
 }
 
-type Longint = string
-
-func (i *LongRpc) Add(params *LongParams, result *Longint) error {
-	a := params.A + params.B
-	*result = any(a).(Longint)
+func (i *LongRpc) Add(params *LongParams, result *string) error {
+	*result = params.A + params.B
 	return nil
 }
 
@@ -220,7 +217,7 @@ func TestLongPackageTcpCall(t *testing.T) {
 			c, _ := jsonrpc4go.NewClient("LongRpc", "tcp", "127.0.0.1:3609")
 			c.SetOptions(client.TcpOptions{PackageEof: "\r\n", PackageMaxLength: 2 * 1024 * 1024})
 			params := LongParams{LongString1, LongString2}
-			result := new(Longint)
+			result := new(string)
 			for j := 0; j < 100; j++ {
 				c.Call("Add", &params, result, false)
 				ls := LongString1 + LongString2
