@@ -11,6 +11,13 @@ import (
 	"github.com/sunquakes/jsonrpc4go/discovery"
 )
 
+/**
+ * @Description: Basic configuration structure for TCP client
+ * @Field Name: Service name
+ * @Field Protocol: Protocol type
+ * @Field Address: Service address
+ * @Field Discovery: Service discovery driver
+ */
 type Tcp struct {
 	Name      string
 	Protocol  string
@@ -18,6 +25,16 @@ type Tcp struct {
 	Discovery discovery.Driver
 }
 
+/**
+ * @Description: Main structure for TCP client
+ * @Field Name: Service name
+ * @Field Protocol: Protocol type
+ * @Field Address: Service address
+ * @Field Discovery: Service discovery driver
+ * @Field RequestList: Request list for batch calls
+ * @Field Options: TCP client options
+ * @Field Pool: Connection pool
+ */
 type TcpClient struct {
 	Name        string
 	Protocol    string
@@ -28,15 +45,33 @@ type TcpClient struct {
 	Pool        *Pool
 }
 
+/**
+ * @Description: Options structure for TCP client
+ * @Field PackageEof: Packet end delimiter
+ * @Field PackageMaxLength: Maximum packet length
+ */
 type TcpOptions struct {
 	PackageEof       string
 	PackageMaxLength int64
 }
 
+/**
+ * @Description: Create a new TCP client
+ * @Receiver p: Tcp structure pointer
+ * @Return Client: Client interface
+ */
 func (p *Tcp) NewClient() Client {
 	return NewTcpClient(p.Name, p.Protocol, p.Address, p.Discovery)
 }
 
+/**
+ * @Description: Create a new TcpClient instance
+ * @Param name: Service name
+ * @Param protocol: Protocol type
+ * @Param address: Service address
+ * @Param dc: Service discovery driver
+ * @Return *TcpClient: TcpClient instance pointer
+ */
 func NewTcpClient(name string, protocol string, address string, dc discovery.Driver) *TcpClient {
 	options := &TcpOptions{
 		"\r\n",
@@ -54,6 +89,15 @@ func NewTcpClient(name string, protocol string, address string, dc discovery.Dri
 	}
 }
 
+/**
+ * @Description: Batch add requests
+ * @Receiver c: TcpClient structure pointer
+ * @Param method: Method name
+ * @Param params: Parameters
+ * @Param result: Result
+ * @Param isNotify: Whether it's a notification
+ * @Return *error: Error pointer
+ */
 func (c *TcpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
 	singleRequest := &common.SingleRequest{
 		Method:   method,
@@ -66,6 +110,11 @@ func (c *TcpClient) BatchAppend(method string, params any, result any, isNotify 
 	return singleRequest.Error
 }
 
+/**
+ * @Description: Execute batch requests
+ * @Receiver c: TcpClient structure pointer
+ * @Return error: Error message
+ */
 func (c *TcpClient) BatchCall() error {
 	var (
 		err error
@@ -90,14 +139,33 @@ func (c *TcpClient) BatchCall() error {
 	return err
 }
 
+/**
+ * @Description: Set TCP options
+ * @Receiver c: TcpClient structure pointer
+ * @Param tcpOptions: TCP options
+ */
 func (c *TcpClient) SetOptions(tcpOptions any) {
 	c.Options = tcpOptions.(TcpOptions)
 }
 
+/**
+ * @Description: Set connection pool options
+ * @Receiver c: TcpClient structure pointer
+ * @Param poolOption: Connection pool options
+ */
 func (c *TcpClient) SetPoolOptions(poolOption any) {
 	c.Pool.SetOptions(poolOption.(PoolOptions))
 }
 
+/**
+ * @Description: Execute a single request
+ * @Receiver c: TcpClient structure pointer
+ * @Param method: Method name
+ * @Param params: Parameters
+ * @Param result: Result
+ * @Param isNotify: Whether it's a notification
+ * @Return error: Error message
+ */
 func (c *TcpClient) Call(method string, params any, result any, isNotify bool) error {
 	var (
 		err error
@@ -114,6 +182,13 @@ func (c *TcpClient) Call(method string, params any, result any, isNotify bool) e
 	return err
 }
 
+/**
+ * @Description: Handle request and response
+ * @Receiver c: TcpClient structure pointer
+ * @Param b: Request data
+ * @Param result: Result
+ * @Return error: Error message
+ */
 func (c *TcpClient) handleFunc(b []byte, result any) error {
 	var (
 		err  error

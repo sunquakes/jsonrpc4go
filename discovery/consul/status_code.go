@@ -1,7 +1,13 @@
 package consul
 
+/**
+ * @Description: Service status code - passing
+ */
 const STATUS_CODE_PASSING = 200
 
+/**
+ * @Description: Consul status code mapping table, used to explain the meaning of different status codes
+ */
 var StatusCodeMap = map[int]string{
 	200: "All health checks of every matching service instance are passing",
 	400: "Bad parameter (missing service name of id)",
