@@ -1,0 +1,35 @@
+# Exclude git files
+.git/
+.gitignore
+
+# Exclude documentation
+*.md
+!DOCKER_README.md
+
+# Exclude IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Exclude test and example files that are not needed in Docker
+test/*.go
+examples/*/client/
+
+# Exclude CI/CD workflows
+.github/
+
+# Exclude binary files that might be created
+*.exe
+*.bin
+*.o
+*.a
+*.so
+
+# Exclude logs
+*.log
+logs/
+
+# Other common files to exclude
+.DS_Store
+Thumbs.db
