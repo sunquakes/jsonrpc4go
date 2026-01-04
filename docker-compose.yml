@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  jsonrpc-benchmark:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jsonrpc-benchmark
+    ports:
+      - "3232:3232"
+    environment:
+      - GO_ENV=production
+    volumes:
+      - ./test/wrk:/app/test/wrk:ro
+    networks:
+      - benchmark
+    restart: "no"
+
+networks:
+  benchmark:
+    driver: bridge
