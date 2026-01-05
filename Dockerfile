@@ -27,11 +27,9 @@ RUN mkdir -p /tmp/build && go build -o /tmp/build/server examples/http/server/ma
 # Create final runtime image
 FROM golang:1.24-alpine
 
-# Install runtime dependencies
-RUN apk add --no-cache wrk bash curl
-
-# Create a non-root user and group
-RUN addgroup -g 1001 appuser && \
+# Install runtime dependencies and create non-root user
+RUN apk add --no-cache wrk bash curl && \
+    addgroup -g 1001 appuser && \
     adduser -S -u 1001 -G appuser appuser
 
 # Set working directory
