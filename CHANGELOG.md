@@ -1,3 +1,9 @@
+## [v1.6.8] - 2026-01-11
+
+### Added
+- Added wrk benchmark test.
+
+
 ## [v1.6.7] - 2025-09-24
 
 ### Added
