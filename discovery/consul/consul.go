@@ -143,7 +143,9 @@ func (d *Consul) Register(name string, protocol string, hostname string, port in
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		return errors.New(StatusCodeMap[resp.StatusCode])
 	}
-	d.Check(ID, name, protocol, hostname, port)
+	if err := d.Check(ID, name, protocol, hostname, port); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -246,8 +248,13 @@ func (d *Consul) Get(name string) (string, error) {
 		return "", errors.New(StatusCodeMap[resp.StatusCode])
 	}
 	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
 	var hss []HealthService
-	json.Unmarshal(body, &hss)
+	if err := json.Unmarshal(body, &hss); err != nil {
+		return "", err
+	}
 	ua := make([]string, 0)
 	for _, v := range hss {
 		ua = append(ua, fmt.Sprintf("%s:%d", v.Service.Address, v.Service.Port))

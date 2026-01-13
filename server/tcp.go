@@ -134,7 +134,9 @@ func (s *TcpServer) DiscoveryRegister(key, value interface{}) bool {
  * @param m - The service to register
  */
 func (s *TcpServer) Register(m any) {
-	s.Server.Register(m)
+	if err := s.Server.Register(m); err != nil {
+		log.Panic(err.Error())
+	}
 }
 
 /*
@@ -232,6 +234,10 @@ func (s *TcpServer) handleFunc(ctx context.Context, conn net.Conn) {
 		}
 		res := s.Server.Handler(data[:l-eofl])
 		res = append(res, eofb...)
-		conn.Write(res)
+		_, err := conn.Write(res)
+		if err != nil {
+			common.Debug(err.Error())
+			return
+		}
 	}
 }
