@@ -211,6 +211,21 @@ func (i *LongRpc) Add(params *LongParams, result *string) error {
 	return nil
 }
 
+func executeLongStringTests(t *testing.T, c client.Client, iterations int) {
+	params := LongParams{LongString1, LongString2}
+	result := new(string)
+
+	for j := 0; j < iterations; j++ {
+		if err := c.Call("Add", &params, result, false); err != nil {
+			t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
+		}
+		ls := LongString1 + LongString2
+		if *result != ls {
+			t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
+		}
+	}
+}
+
 func TestLongPackageTcpCall(t *testing.T) {
 	s, _ := jsonrpc4go.NewServer("tcp", 3609)
 	s.SetOptions(server.TcpOptions{PackageEof: "\r\n", PackageMaxLength: 2 * 1024 * 1024})
@@ -226,26 +241,9 @@ func TestLongPackageTcpCall(t *testing.T) {
 			defer group.Done()
 			c, _ := jsonrpc4go.NewClient("LongRpc", "tcp", "127.0.0.1:3609")
 			c.SetOptions(client.TcpOptions{PackageEof: "\r\n", PackageMaxLength: 2 * 1024 * 1024})
-			params := LongParams{LongString1, LongString2}
-			result := new(string)
-			for j := 0; j < 100; j++ {
-				if err := c.Call("Add", &params, result, false); err != nil {
-					t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
-				}
-				ls := LongString1 + LongString2
-				if *result != ls {
-					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
-				}
-			}
-			for j := 0; j < 100; j++ {
-				if err := c.Call("Add", &params, result, false); err != nil {
-					t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
-				}
-				ls := LongString1 + LongString2
-				if *result != ls {
-					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
-				}
-			}
+
+			executeLongStringTests(t, c, 100)
+			executeLongStringTests(t, c, 100)
 		}(&wg)
 	}
 	wg.Wait()

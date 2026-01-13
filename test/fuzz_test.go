@@ -19,7 +19,7 @@ func FuzzParseRequestBody(f *testing.F) {
 
 		// Test the server handler functionality with panic recovery
 		defer func() {
-			if r := recover(); r != nil {
+			if recover() != nil {
 				// Recover from any panic during fuzzing
 				return
 			}
