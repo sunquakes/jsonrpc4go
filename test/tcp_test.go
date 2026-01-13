@@ -30,7 +30,9 @@ func TestTcpCall(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3601")
 	params := Params{1, 2}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	if err := c.Call("Add", &params, result, false); err != nil {
+		t.Errorf("Error calling Add: %v", err)
+	}
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -46,7 +48,9 @@ func TestTcpCallMethod(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3602")
 	params := Params{1, 2}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	if err := c.Call("Add", &params, result, false); err != nil {
+		t.Errorf("Error calling Add: %v", err)
+	}
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -62,7 +66,9 @@ func TestTcpNotifyCall(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3603")
 	params := Params{2, 3}
 	result := new(int)
-	c.Call("Add", &params, result, true)
+	if err := c.Call("Add", &params, result, true); err != nil {
+		t.Errorf("Error calling Add: %v", err)
+	}
 	if *result != 5 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 5, *result)
 	}
@@ -81,7 +87,7 @@ func TestTcpBatchCall(t *testing.T) {
 	err1 := c.BatchAppend("Add1", Params{1, 6}, result1, false)
 	result2 := new(int)
 	err2 := c.BatchAppend("Add", Params{2, 3}, result2, false)
-	c.BatchCall()
+	_ = c.BatchCall()
 
 	if *err2 != nil || *result2 != 5 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, 2, 3, 5, result2)
@@ -103,7 +109,9 @@ func TestSetOption(t *testing.T) {
 	c.SetOptions(client.TcpOptions{PackageEof: "aaaaaa", PackageMaxLength: 2 * 1024 * 1024})
 	params := Params{1, 2}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	if err := c.Call("Add", &params, result, false); err != nil {
+		t.Errorf("Error calling Add: %v", err)
+	}
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -139,7 +147,9 @@ func TestSetHooks(t *testing.T) {
 	<-s.GetEvent()
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3606")
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	if err := c.Call("Add", &params, result, false); err != nil {
+		t.Errorf("Error calling Add: %v", err)
+	}
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -219,7 +229,9 @@ func TestLongPackageTcpCall(t *testing.T) {
 			params := LongParams{LongString1, LongString2}
 			result := new(string)
 			for j := 0; j < 100; j++ {
-				c.Call("Add", &params, result, false)
+				if err := c.Call("Add", &params, result, false); err != nil {
+					t.Errorf("Error calling Add: %v", err)
+				}
 				ls := LongString1 + LongString2
 				if *result != ls {
 					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)

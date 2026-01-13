@@ -60,4 +60,4 @@ jobs:
 
     - name: Fuzz test
       run: |
-        go test -fuzz=FuzzParseRequestBody -fuzztime=10s ./test
+        go test -fuzz=FuzzParseRequestBody -fuzztime=10s -run=^$ ./test

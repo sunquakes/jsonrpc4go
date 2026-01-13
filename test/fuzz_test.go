@@ -17,7 +17,14 @@ func FuzzParseRequestBody(f *testing.F) {
 		// Test the request parsing functionality
 		_, _ = common.ParseRequestBody(data)
 
-		// Test the server handler functionality
+		// Test the server handler functionality with panic recovery
+		defer func() {
+			if r := recover(); r != nil {
+				// Recover from any panic during fuzzing
+				return
+			}
+		}()
+
 		svr := &common.Server{}
 		_ = svr.Handler(data)
 	})

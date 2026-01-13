@@ -148,7 +148,9 @@ func TestHttpConsul(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", dc)
 	params := Params{10, 11}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	if err := c.Call("Add", &params, result, false); err != nil {
+		t.Errorf("Error calling Add: %v", err)
+	}
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
@@ -173,7 +175,9 @@ func TestHttpNacos(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", dc)
 	params := Params{10, 11}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	if err := c.Call("Add", &params, result, false); err != nil {
+		t.Errorf("Error calling Add: %v", err)
+	}
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
