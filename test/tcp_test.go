@@ -31,7 +31,7 @@ func TestTcpCall(t *testing.T) {
 	params := Params{1, 2}
 	result := new(int)
 	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf("Error calling Add: %v", err)
+		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 	}
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
@@ -49,7 +49,7 @@ func TestTcpCallMethod(t *testing.T) {
 	params := Params{1, 2}
 	result := new(int)
 	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf("Error calling Add: %v", err)
+		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 	}
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
@@ -67,7 +67,7 @@ func TestTcpNotifyCall(t *testing.T) {
 	params := Params{2, 3}
 	result := new(int)
 	if err := c.Call("Add", &params, result, true); err != nil {
-		t.Errorf("Error calling Add: %v", err)
+		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 	}
 	if *result != 5 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 5, *result)
@@ -110,7 +110,7 @@ func TestSetOption(t *testing.T) {
 	params := Params{1, 2}
 	result := new(int)
 	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf("Error calling Add: %v", err)
+		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 	}
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
@@ -148,7 +148,7 @@ func TestSetHooks(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3606")
 	result := new(int)
 	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf("Error calling Add: %v", err)
+		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 	}
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
@@ -230,7 +230,7 @@ func TestLongPackageTcpCall(t *testing.T) {
 			result := new(string)
 			for j := 0; j < 100; j++ {
 				if err := c.Call("Add", &params, result, false); err != nil {
-					t.Errorf("Error calling Add: %v", err)
+					t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 				}
 				ls := LongString1 + LongString2
 				if *result != ls {
@@ -239,7 +239,7 @@ func TestLongPackageTcpCall(t *testing.T) {
 			}
 			for j := 0; j < 100; j++ {
 				if err := c.Call("Add", &params, result, false); err != nil {
-					t.Errorf("Error calling Add: %v", err)
+					t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 				}
 				ls := LongString1 + LongString2
 				if *result != ls {
@@ -269,7 +269,7 @@ func TestCoTcpCall(t *testing.T) {
 				params := Params{index, j}
 				result := new(int)
 				if err := c.Call("Add", &params, result, false); err != nil {
-					t.Errorf("Error calling Add: %v", err)
+					t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 				}
 				if *result != (index + j) {
 					t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, (index + j), *result)
@@ -334,7 +334,7 @@ func TestRibbonTcpCall(t *testing.T) {
 				params := Params{index, j}
 				result := new(int)
 				if err := c.Call("Add", &params, result, false); err != nil {
-					t.Errorf("Error calling Add: %v", err)
+					t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 				}
 				if *result != (index + j) {
 					t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, (index + j), *result)
@@ -366,7 +366,7 @@ func TestTcpConsul(t *testing.T) {
 	params := Params{10, 11}
 	result := new(int)
 	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf("Error calling Add: %v", err)
+		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 	}
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
@@ -392,7 +392,7 @@ func TestTcpNacos(t *testing.T) {
 	params := Params{10, 11}
 	result := new(int)
 	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf("Error calling Add: %v", err)
+		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 	}
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)

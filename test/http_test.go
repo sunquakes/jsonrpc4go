@@ -13,8 +13,11 @@ import (
 	"github.com/sunquakes/jsonrpc4go/discovery/nacos"
 )
 
-const EQUAL_MESSAGE_TEMPLETE = "%d + %d expected be %d, but %d got"
-const ERROR_MESSAGE_TEMPLETE = "Error expected be %s, but %s got"
+const (
+	EQUAL_MESSAGE_TEMPLETE     = "%d + %d expected be %d, but %d got"
+	ERROR_MESSAGE_TEMPLETE     = "Error expected be %s, but %s got"
+	ERROR_CALLING_ADD_TEMPLETE = "Error calling Add: %v"
+)
 
 type IntRpc struct{}
 
@@ -149,7 +152,7 @@ func TestHttpConsul(t *testing.T) {
 	params := Params{10, 11}
 	result := new(int)
 	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf("Error calling Add: %v", err)
+		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 	}
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
@@ -176,7 +179,7 @@ func TestHttpNacos(t *testing.T) {
 	params := Params{10, 11}
 	result := new(int)
 	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf("Error calling Add: %v", err)
+		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
 	}
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
