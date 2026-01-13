@@ -238,7 +238,9 @@ func TestLongPackageTcpCall(t *testing.T) {
 				}
 			}
 			for j := 0; j < 100; j++ {
-				c.Call("Add", &params, result, false)
+				if err := c.Call("Add", &params, result, false); err != nil {
+					t.Errorf("Error calling Add: %v", err)
+				}
 				ls := LongString1 + LongString2
 				if *result != ls {
 					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
@@ -266,7 +268,9 @@ func TestCoTcpCall(t *testing.T) {
 			for j := 0; j < 100; j++ {
 				params := Params{index, j}
 				result := new(int)
-				c.Call("Add", &params, result, false)
+				if err := c.Call("Add", &params, result, false); err != nil {
+					t.Errorf("Error calling Add: %v", err)
+				}
 				if *result != (index + j) {
 					t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, (index + j), *result)
 				}
@@ -329,7 +333,9 @@ func TestRibbonTcpCall(t *testing.T) {
 			for j := 0; j < 20; j++ {
 				params := Params{index, j}
 				result := new(int)
-				c.Call("Add", &params, result, false)
+				if err := c.Call("Add", &params, result, false); err != nil {
+					t.Errorf("Error calling Add: %v", err)
+				}
 				if *result != (index + j) {
 					t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, (index + j), *result)
 				}
@@ -359,7 +365,9 @@ func TestTcpConsul(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
 	params := Params{10, 11}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	if err := c.Call("Add", &params, result, false); err != nil {
+		t.Errorf("Error calling Add: %v", err)
+	}
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
@@ -383,7 +391,9 @@ func TestTcpNacos(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
 	params := Params{10, 11}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	if err := c.Call("Add", &params, result, false); err != nil {
+		t.Errorf("Error calling Add: %v", err)
+	}
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
