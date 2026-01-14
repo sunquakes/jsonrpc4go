@@ -124,19 +124,13 @@ func TestHttpRateLimit(t *testing.T) {
 	<-s.GetEvent()
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3205")
 	result := new(int)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	err := c.Call("Add", &params, result, false)
-	if err != nil {
-		t.Errorf(ERROR_MESSAGE_TEMPLETE, "nil", err.Error())
-	}
-	err = c.Call("Add", &params, result, false)
 	if err.Error() != "Too many requests" {
 		t.Errorf(ERROR_MESSAGE_TEMPLETE, "Too many requests", err.Error())
 	}
 	time.Sleep(time.Duration(2) * time.Second)
-	err = c.Call("Add", &params, result, false)
-	if err != nil {
-		t.Errorf(ERROR_MESSAGE_TEMPLETE, "nil", err.Error())
-	}
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 }
 
 func TestHttpConsul(t *testing.T) {
