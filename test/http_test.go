@@ -53,7 +53,7 @@ func TestHttpCall(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3201")
 	params := Params{1, 2}
 	result := new(int)
-	_ = c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -69,7 +69,7 @@ func TestHttpCallMethod(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3202")
 	params := Params{1, 2}
 	result := new(int)
-	_ = c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -85,7 +85,7 @@ func TestHttpNotifyCall(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3203")
 	params := Params{2, 3}
 	result := new(int)
-	_ = c.Call("Add", &params, result, true)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 5 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 5, *result)
 	}
@@ -193,7 +193,7 @@ func TestDataType(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3618")
 	params := Params{2, 1}
 	result := new(int)
-	_ = c.Call("Sub", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Sub", &params, result)
 	if *result != 1 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 1, *result)
 	}
