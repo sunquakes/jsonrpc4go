@@ -64,7 +64,7 @@ func NewPool(name, address string, dc discovery.Driver, option PoolOptions) *Poo
 		ActiveTotal:       0,
 		Conns:             ch,
 	}
-	pool.ActiveAddress()
+	_, _ = pool.ActiveAddress()
 	pool.Lock.Lock()
 	defer pool.Lock.Unlock()
 	for i := 0; i < option.MinIdle; i++ {

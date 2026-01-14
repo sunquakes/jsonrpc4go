@@ -5,24 +5,59 @@ name: Go
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "development" ]
   pull_request:
     branches: [ "main" ]
 
 jobs:
 
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Security Scan with govulncheck
+      uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee
+      with:
+        go-version-input: '1.24'
+        # Only scan the main module
+        go-package: ./...
+
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v5
       with:
-        go-version: 1.24
+        go-version: '1.24'
 
     - name: Build
       run: go build -v ./...
 
     - name: Test
-      run: go test -v ./...
+      run: go test -v ./test/...
+
+    - name: Vet
+      run: go vet ./...
+
+    - name: Static Analysis with golangci-lint
+      uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84
+      with:
+        version: latest
+        args: --timeout=5m
+
+  fuzz-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+
+    - name: Fuzz test
+      run: |
+        go test -fuzz=FuzzParseRequestBody -fuzztime=10s -run=^$ ./test

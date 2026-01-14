@@ -30,7 +30,7 @@ func TestTcpCall(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3601")
 	params := Params{1, 2}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -46,7 +46,7 @@ func TestTcpCallMethod(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3602")
 	params := Params{1, 2}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -62,7 +62,7 @@ func TestTcpNotifyCall(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3603")
 	params := Params{2, 3}
 	result := new(int)
-	c.Call("Add", &params, result, true)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 5 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 5, *result)
 	}
@@ -81,7 +81,7 @@ func TestTcpBatchCall(t *testing.T) {
 	err1 := c.BatchAppend("Add1", Params{1, 6}, result1, false)
 	result2 := new(int)
 	err2 := c.BatchAppend("Add", Params{2, 3}, result2, false)
-	c.BatchCall()
+	_ = c.BatchCall()
 
 	if *err2 != nil || *result2 != 5 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, 2, 3, 5, result2)
@@ -103,7 +103,7 @@ func TestSetOption(t *testing.T) {
 	c.SetOptions(client.TcpOptions{PackageEof: "aaaaaa", PackageMaxLength: 2 * 1024 * 1024})
 	params := Params{1, 2}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -139,7 +139,7 @@ func TestSetHooks(t *testing.T) {
 	<-s.GetEvent()
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3606")
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -201,6 +201,19 @@ func (i *LongRpc) Add(params *LongParams, result *string) error {
 	return nil
 }
 
+func executeLongStringTests(t *testing.T, c client.Client, iterations int) {
+	params := LongParams{LongString1, LongString2}
+	result := new(string)
+
+	for j := 0; j < iterations; j++ {
+		MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
+		ls := LongString1 + LongString2
+		if *result != ls {
+			t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
+		}
+	}
+}
+
 func TestLongPackageTcpCall(t *testing.T) {
 	s, _ := jsonrpc4go.NewServer("tcp", 3609)
 	s.SetOptions(server.TcpOptions{PackageEof: "\r\n", PackageMaxLength: 2 * 1024 * 1024})
@@ -216,22 +229,9 @@ func TestLongPackageTcpCall(t *testing.T) {
 			defer group.Done()
 			c, _ := jsonrpc4go.NewClient("LongRpc", "tcp", "127.0.0.1:3609")
 			c.SetOptions(client.TcpOptions{PackageEof: "\r\n", PackageMaxLength: 2 * 1024 * 1024})
-			params := LongParams{LongString1, LongString2}
-			result := new(string)
-			for j := 0; j < 100; j++ {
-				c.Call("Add", &params, result, false)
-				ls := LongString1 + LongString2
-				if *result != ls {
-					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
-				}
-			}
-			for j := 0; j < 100; j++ {
-				c.Call("Add", &params, result, false)
-				ls := LongString1 + LongString2
-				if *result != ls {
-					t.Errorf("%s + %s expected be %s, but %s got", params.A, params.B, ls, *result)
-				}
-			}
+
+			executeLongStringTests(t, c, 100)
+			executeLongStringTests(t, c, 100)
 		}(&wg)
 	}
 	wg.Wait()
@@ -254,7 +254,7 @@ func TestCoTcpCall(t *testing.T) {
 			for j := 0; j < 100; j++ {
 				params := Params{index, j}
 				result := new(int)
-				c.Call("Add", &params, result, false)
+				MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 				if *result != (index + j) {
 					t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, (index + j), *result)
 				}
@@ -317,7 +317,7 @@ func TestRibbonTcpCall(t *testing.T) {
 			for j := 0; j < 20; j++ {
 				params := Params{index, j}
 				result := new(int)
-				c.Call("Add", &params, result, false)
+				MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 				if *result != (index + j) {
 					t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, (index + j), *result)
 				}
@@ -347,7 +347,7 @@ func TestTcpConsul(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
 	params := Params{10, 11}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
@@ -371,7 +371,7 @@ func TestTcpNacos(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
 	params := Params{10, 11}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}

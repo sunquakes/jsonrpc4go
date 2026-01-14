@@ -123,7 +123,7 @@ func (d *Etcd) Register(name string, protocol string, hostname string, port int)
 		return err
 	}
 	d.SendHeartbeat(func() {
-		leaseClient.LeaseKeepAlive(context.Background(), &etcdserverpb.LeaseKeepAliveRequest{ID: leaseID})
+		_, _ = leaseClient.LeaseKeepAlive(context.Background(), &etcdserverpb.LeaseKeepAliveRequest{ID: leaseID})
 	})
 	return nil
 }

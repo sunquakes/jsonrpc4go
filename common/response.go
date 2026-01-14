@@ -148,7 +148,9 @@ func GetSingleResponse(jsonData map[string]any, result any) error {
 	emData, ok := jsonData["error"]
 	if ok {
 		resErr := new(Error)
-		err = GetStruct(emData, resErr)
+		if err := GetStruct(emData, resErr); err != nil {
+			return err
+		}
 		Debug(resErr.Message)
 		return errors.New(resErr.Message)
 	}

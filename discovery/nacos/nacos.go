@@ -141,7 +141,9 @@ func (d *Nacos) Register(name string, protocol string, hostname string, port int
 	}
 	if d.Ephemeral == IS_EPHEMERAL {
 		if len(d.HeartbeatList) == 0 {
-			d.Heartbeat()
+			if err := d.Heartbeat(); err != nil {
+				return err
+			}
 		}
 		d.HeartbeatList = append(d.HeartbeatList, Service{hostname, port, true, name})
 	}
@@ -175,7 +177,9 @@ func (d *Nacos) Get(name string) (string, error) {
 		return "", errors.New(string(body))
 	}
 	var gr GetResp
-	json.Unmarshal(body, &gr)
+	if err := json.Unmarshal(body, &gr); err != nil {
+		return "", err
+	}
 	ua := make([]string, 0)
 	for _, v := range gr.Hosts {
 		if !v.Healthy {

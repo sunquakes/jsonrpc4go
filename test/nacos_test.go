@@ -65,7 +65,6 @@ func TestNacosBeat(t *testing.T) {
 		} else {
 			fmt.Fprintln(w, `ok`)
 		}
-		return
 	}))
 	defer ts.Close()
 	r, err := nacos.NewNacos(ts.URL)

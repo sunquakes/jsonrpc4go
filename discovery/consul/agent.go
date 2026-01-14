@@ -26,5 +26,5 @@ func (a *Agent) GetHealthServices(name string) {
 	query := address.Query()
 	query.Set("token", a.Token)
 	address.RawQuery = query.Encode()
-	http.Get(address.String())
+	_, _ = http.Get(address.String())
 }

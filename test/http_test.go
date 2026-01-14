@@ -8,13 +8,17 @@ import (
 	"time"
 
 	"github.com/sunquakes/jsonrpc4go"
+	"github.com/sunquakes/jsonrpc4go/client"
 	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/discovery/consul"
 	"github.com/sunquakes/jsonrpc4go/discovery/nacos"
 )
 
-const EQUAL_MESSAGE_TEMPLETE = "%d + %d expected be %d, but %d got"
-const ERROR_MESSAGE_TEMPLETE = "Error expected be %s, but %s got"
+const (
+	EQUAL_MESSAGE_TEMPLETE     = "%d + %d expected be %d, but %d got"
+	ERROR_MESSAGE_TEMPLETE     = "Error expected be %s, but %s got"
+	ERROR_CALLING_ADD_TEMPLETE = "Error calling Add: %v"
+)
 
 type IntRpc struct{}
 
@@ -33,6 +37,12 @@ func (i *IntRpc) Sub(params *Params, result *int) error {
 	return nil
 }
 
+func MakeRpcCallWithErrorCheck(t *testing.T, c client.Client, method string, params, result any) {
+	if err := c.Call(method, params, result, false); err != nil {
+		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
+	}
+}
+
 func TestHttpCall(t *testing.T) {
 	s, _ := jsonrpc4go.NewServer("http", 3201)
 	s.Register(new(IntRpc))
@@ -43,7 +53,7 @@ func TestHttpCall(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3201")
 	params := Params{1, 2}
 	result := new(int)
-	_ = c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -59,7 +69,7 @@ func TestHttpCallMethod(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3202")
 	params := Params{1, 2}
 	result := new(int)
-	_ = c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 3 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 	}
@@ -75,7 +85,7 @@ func TestHttpNotifyCall(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3203")
 	params := Params{2, 3}
 	result := new(int)
-	_ = c.Call("Add", &params, result, true)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 5 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 5, *result)
 	}
@@ -114,19 +124,13 @@ func TestHttpRateLimit(t *testing.T) {
 	<-s.GetEvent()
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3205")
 	result := new(int)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	err := c.Call("Add", &params, result, false)
-	if err != nil {
-		t.Errorf(ERROR_MESSAGE_TEMPLETE, "nil", err.Error())
-	}
-	err = c.Call("Add", &params, result, false)
 	if err.Error() != "Too many requests" {
 		t.Errorf(ERROR_MESSAGE_TEMPLETE, "Too many requests", err.Error())
 	}
 	time.Sleep(time.Duration(2) * time.Second)
-	err = c.Call("Add", &params, result, false)
-	if err != nil {
-		t.Errorf(ERROR_MESSAGE_TEMPLETE, "nil", err.Error())
-	}
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 }
 
 func TestHttpConsul(t *testing.T) {
@@ -148,7 +152,7 @@ func TestHttpConsul(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", dc)
 	params := Params{10, 11}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
@@ -173,7 +177,7 @@ func TestHttpNacos(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", dc)
 	params := Params{10, 11}
 	result := new(int)
-	c.Call("Add", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
@@ -189,7 +193,7 @@ func TestDataType(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3618")
 	params := Params{2, 1}
 	result := new(int)
-	_ = c.Call("Sub", &params, result, false)
+	MakeRpcCallWithErrorCheck(t, c, "Sub", &params, result)
 	if *result != 1 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 1, *result)
 	}
