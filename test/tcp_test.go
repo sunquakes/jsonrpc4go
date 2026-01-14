@@ -331,9 +331,7 @@ func TestRibbonTcpCall(t *testing.T) {
 			for j := 0; j < 20; j++ {
 				params := Params{index, j}
 				result := new(int)
-				if err := c.Call("Add", &params, result, false); err != nil {
-					t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
-				}
+				MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 				if *result != (index + j) {
 					t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, (index + j), *result)
 				}
@@ -363,9 +361,7 @@ func TestTcpConsul(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
 	params := Params{10, 11}
 	result := new(int)
-	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
-	}
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
@@ -389,9 +385,7 @@ func TestTcpNacos(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
 	params := Params{10, 11}
 	result := new(int)
-	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
-	}
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}

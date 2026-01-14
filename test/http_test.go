@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sunquakes/jsonrpc4go"
+	"github.com/sunquakes/jsonrpc4go/client"
 	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/discovery/consul"
 	"github.com/sunquakes/jsonrpc4go/discovery/nacos"
@@ -34,6 +35,12 @@ func (i *IntRpc) Add(params *Params, result *int) error {
 func (i *IntRpc) Sub(params *Params, result *int) error {
 	*result = params.A - params.B
 	return nil
+}
+
+func MakeRpcCallWithErrorCheck(t *testing.T, c client.Client, method string, params, result any) {
+	if err := c.Call(method, params, result, false); err != nil {
+		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
+	}
 }
 
 func TestHttpCall(t *testing.T) {
@@ -151,9 +158,7 @@ func TestHttpConsul(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", dc)
 	params := Params{10, 11}
 	result := new(int)
-	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
-	}
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
@@ -178,9 +183,7 @@ func TestHttpNacos(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", dc)
 	params := Params{10, 11}
 	result := new(int)
-	if err := c.Call("Add", &params, result, false); err != nil {
-		t.Errorf(ERROR_CALLING_ADD_TEMPLETE, err)
-	}
+	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 21 {
 		t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 21, *result)
 	}
