@@ -1,5 +1,26 @@
 English | [🇨🇳中文](README_ZH.md)
 # jsonrpc4go
+
+> A high-performance [JSON-RPC 2.0](https://www.jsonrpc.org/specification) implementation in Go. Supports HTTP/TCP, service registration & discovery (Consul / Nacos / etcd), client-side load-balancing, rate limiting, hooks, batch calls and notifications.
+
+JSON-RPC 2.0 is the wire protocol that powers **[MCP (Model Context Protocol)](https://modelcontextprotocol.io/)** — the standard interface between LLMs and external tools / data sources. Because `jsonrpc4go` speaks this protocol natively over both HTTP and TCP, it is an ideal foundation for building **MCP servers and clients** in Go, letting AI agents call your services as first-class tools.
+
+## 🤖 Use as an MCP framework
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) standardizes how AI assistants discover and invoke external tools, resources and prompts. Its transport layer is exactly JSON-RPC 2.0 — the same protocol `jsonrpc4go` is built on. This makes `jsonrpc4go` a ready-to-use foundation for AI-native services:
+
+- **Expose Go functions as MCP tools** — register a struct method and it becomes an AI-callable tool with `method` = `ServiceName/Method`.
+- **Bidirectional role** — act as an MCP server (tools provider) or an MCP client (agent that calls remote tools) using the same `Server` / `Client` APIs.
+- **Transport flexibility** — serve MCP over HTTP for stateless gateways, or over TCP for persistent, streaming-friendly agent connections.
+- **Production-ready foundations** — service discovery (Consul / Nacos / etcd), client-side load-balancing, rate limiting and before/after hooks let you run MCP tool services at scale, with audit / auth / tracing hooks for safe agent access.
+- **Batch calls & notifications** — map naturally to MCP's batched tool invocations and one-way notifications.
+
+```go
+// Any registered method is already an AI-callable tool over JSON-RPC 2.0.
+s, _ := jsonrpc4go.NewServer("http", 3232)
+s.Register(new(IntRpc)) // IntRpc.Add is now callable by any MCP client
+s.Start()
+```
+
 ## 🧰 Installing
 ```
 go get -u github.com/sunquakes/jsonrpc4go

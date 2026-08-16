@@ -1,5 +1,26 @@
 [English](README.md) | 🇨🇳中文
 # jsonrpc4go
+
+> 一个高性能的 [JSON-RPC 2.0](https://www.jsonrpc.org/specification) Go 语言实现。支持 HTTP/TCP、服务注册与发现（Consul / Nacos / etcd）、客户端负载均衡、限流、钩子、批量请求与通知。
+
+JSON-RPC 2.0 正是 **[MCP（Model Context Protocol，模型上下文协议）](https://modelcontextprotocol.io/)** 的传输协议 —— 也就是 LLM 与外部工具 / 数据源之间的标准接口。由于 `jsonrpc4go` 原生支持基于 HTTP 与 TCP 的该协议，它是用 Go 构建 **MCP 服务端与客户端** 的理想底层框架，让 AI Agent 能够把你的服务当作一等公民的工具来调用。
+
+## 🤖 作为 MCP 框架使用
+[模型上下文协议（MCP）](https://modelcontextprotocol.io/) 规范了 AI 助手如何发现并调用外部工具、资源和提示词。它的传输层正是 JSON-RPC 2.0 —— 与 `jsonrpc4go` 所基于的协议完全一致。这让 `jsonrpc4go` 成为构建 AI 原生服务的现成底座：
+
+- **把 Go 函数暴露为 MCP 工具** —— 注册一个结构体方法，它就变成了一个 AI 可调用的工具，`method` = `ServiceName/Method`。
+- **双向角色** —— 同一套 `Server` / `Client` API，既可作为 MCP 服务端（工具提供方），也可作为 MCP 客户端（调用远程工具的 Agent）。
+- **传输层灵活** —— 通过 HTTP 提供无状态网关型 MCP 服务，或通过 TCP 提供持久、对流式友好的 Agent 连接。
+- **生产级基础设施** —— 服务发现（Consul / Nacos / etcd）、客户端负载均衡、限流以及前后置钩子，让 MCP 工具服务可大规模运行；钩子可用于审计 / 鉴权 / 链路追踪，保障 Agent 访问安全。
+- **批量请求与通知** —— 天然映射 MCP 的批量工具调用和单向通知。
+
+```go
+// 任何已注册的方法，本身就是一个基于 JSON-RPC 2.0 的 AI 可调用工具。
+s, _ := jsonrpc4go.NewServer("http", 3232)
+s.Register(new(IntRpc)) // IntRpc.Add 现在可被任意 MCP 客户端调用
+s.Start()
+```
+
 ## 🧰 安装
 ```
 go get -u github.com/sunquakes/jsonrpc4go
