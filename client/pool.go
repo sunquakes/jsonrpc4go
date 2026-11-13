@@ -6,11 +6,25 @@ import (
 	"net"
 	"strings"
 	"sync"
-
-	"slices"
+	"time"
 
 	"github.com/sunquakes/jsonrpc4go/discovery"
 )
+
+/**
+ * @Description: Default number of idle connections
+ */
+const DEFAULT_MIN_IDLE = 5
+
+/**
+ * @Description: Default maximum number of active connections
+ */
+const DEFAULT_MAX_ACTIVE = 5
+
+/**
+ * @Description: Connection timeout
+ */
+const CONNECT_TIMEOUT = 3 * time.Second
 
 /**
  * @Description: Connection pool options structure
@@ -30,8 +44,9 @@ type PoolOptions struct {
  * @Field ActiveAddressList: Active address list
  * @Field Lock: Mutex lock
  * @Field Options: Connection pool options
- * @Field ActiveTotal: Total number of active connections
- * @Field Conns: Connection channel
+ * @Field ActiveTotal: Total number of open connections
+ * @Field Conns: Idle connection channel
+ * @Field slots: Bounds the number of connections that are currently borrowed
  */
 type Pool struct {
 	Name              string
@@ -42,6 +57,8 @@ type Pool struct {
 	Options           PoolOptions
 	ActiveTotal       int
 	Conns             chan net.Conn
+	slots             chan struct{}
+	next              uint64
 }
 
 /**
@@ -53,20 +70,25 @@ type Pool struct {
  * @Return *Pool: Connection pool instance pointer
  */
 func NewPool(name, address string, dc discovery.Driver, option PoolOptions) *Pool {
-	ch := make(chan net.Conn, option.MaxActive)
+	if option.MaxActive <= 0 {
+		option.MaxActive = DEFAULT_MAX_ACTIVE
+	}
+	if option.MinIdle < 0 {
+		option.MinIdle = 0
+	}
+	if option.MinIdle > option.MaxActive {
+		option.MinIdle = option.MaxActive
+	}
 	pool := &Pool{
-		Name:              name,
-		Discovery:         dc,
-		Address:           address,
-		ActiveAddressList: nil,
-		Lock:              sync.Mutex{},
-		Options:           option,
-		ActiveTotal:       0,
-		Conns:             ch,
+		Name:        name,
+		Discovery:   dc,
+		Address:     address,
+		Options:     option,
+		ActiveTotal: 0,
+		Conns:       make(chan net.Conn, option.MaxActive),
+		slots:       make(chan struct{}, option.MaxActive),
 	}
 	_, _ = pool.ActiveAddress()
-	pool.Lock.Lock()
-	defer pool.Lock.Unlock()
 	for i := 0; i < option.MinIdle; i++ {
 		conn, err := pool.Create()
 		if err == nil {
@@ -97,7 +119,9 @@ func (p *Pool) ActiveAddress() (int, error) {
 		address = p.Address
 	}
 	addressList := strings.Split(address, ",")
+	p.Lock.Lock()
 	p.ActiveAddressList = addressList
+	p.Lock.Unlock()
 	return len(addressList), nil
 }
 
@@ -108,19 +132,27 @@ func (p *Pool) ActiveAddress() (int, error) {
  * @Return error: Error message
  */
 func (p *Pool) Borrow() (net.Conn, error) {
-	p.Lock.Lock()
-	defer p.Lock.Unlock()
-	if p.ActiveTotal <= 0 {
-		return nil, errors.New("unable to connect to the server")
+	// Wait until the pool has capacity for another borrowed connection,
+	// without holding the lock so that releases are never blocked.
+	p.slots <- struct{}{}
+
+	// Prefer reusing an idle connection.
+	select {
+	case conn := <-p.Conns:
+		return conn, nil
+	default:
 	}
-	if p.ActiveTotal >= p.Options.MaxActive {
-		return <-p.Conns, nil
-	}
+
+	// Create the connection without holding the lock, since dialing blocks.
 	conn, err := p.Create()
-	if err == nil {
-		p.ActiveTotal++
+	if err != nil {
+		<-p.slots
+		return nil, err
 	}
-	return conn, err
+	p.Lock.Lock()
+	p.ActiveTotal++
+	p.Lock.Unlock()
+	return conn, nil
 }
 
 /**
@@ -129,9 +161,21 @@ func (p *Pool) Borrow() (net.Conn, error) {
  * @Param conn: Network connection
  */
 func (p *Pool) Release(conn net.Conn) {
-	p.Lock.Lock()
-	defer p.Lock.Unlock()
-	p.Conns <- conn
+	if conn == nil {
+		return
+	}
+	select {
+	case p.Conns <- conn:
+	default:
+		// The pool is full; discard the connection instead of blocking.
+		_ = conn.Close()
+		p.Lock.Lock()
+		if p.ActiveTotal > 0 {
+			p.ActiveTotal--
+		}
+		p.Lock.Unlock()
+	}
+	<-p.slots
 }
 
 /**
@@ -141,22 +185,36 @@ func (p *Pool) Release(conn net.Conn) {
  * @Return error: Error message
  */
 func (p *Pool) Create() (net.Conn, error) {
-	var err error
-	size := len(p.ActiveAddressList)
-	if size == 0 {
-		size, err = p.ActiveAddress()
-		if err != nil {
+	p.Lock.Lock()
+	addresses := p.ActiveAddressList
+	if len(addresses) == 0 {
+		p.Lock.Unlock()
+		if _, err := p.ActiveAddress(); err != nil {
 			return nil, err
 		}
+		p.Lock.Lock()
+		addresses = p.ActiveAddressList
 	}
-	key := p.ActiveTotal % size
-	address := p.ActiveAddressList[key]
-	conn, err := p.Connect(address)
-	if err != nil {
-		p.ActiveAddressList = slices.Delete(p.ActiveAddressList, key, key+1)
+	if len(addresses) == 0 {
+		p.Lock.Unlock()
+		return nil, errors.New("no available service address")
+	}
+	start := int(p.next % uint64(len(addresses)))
+	p.next++
+	p.Lock.Unlock()
+
+	// Try each address in turn to survive individual node failures.
+	var lastErr error
+	for i := 0; i < len(addresses); i++ {
+		address := addresses[(start+i)%len(addresses)]
+		conn, err := p.Connect(address)
+		if err == nil {
+			return conn, nil
+		}
+		lastErr = err
 		log.Printf("Can not connect %s", address)
 	}
-	return conn, err
+	return nil, lastErr
 }
 
 /**
@@ -167,7 +225,7 @@ func (p *Pool) Create() (net.Conn, error) {
  * @Return error: Error message
  */
 func (p *Pool) Connect(address string) (net.Conn, error) {
-	return net.Dial("tcp", address)
+	return net.DialTimeout("tcp", address, CONNECT_TIMEOUT)
 }
 
 /**
@@ -178,17 +236,8 @@ func (p *Pool) Connect(address string) (net.Conn, error) {
  * @Return error: Error message
  */
 func (p *Pool) BorrowAfterRemove(conn net.Conn) (net.Conn, error) {
-	p.Lock.Lock()
-	defer p.Lock.Unlock()
-	if conn != nil {
-		p.ActiveTotal--
-	}
-	// When disconnected, reconnect instead of fetch from pool.
-	conn, err := p.Create()
-	if err == nil {
-		p.ActiveTotal++
-	}
-	return conn, err
+	p.Remove(conn)
+	return p.Borrow()
 }
 
 /**
@@ -197,11 +246,16 @@ func (p *Pool) BorrowAfterRemove(conn net.Conn) (net.Conn, error) {
  * @Param conn: Connection to remove
  */
 func (p *Pool) Remove(conn net.Conn) {
+	if conn == nil {
+		return
+	}
+	_ = conn.Close()
 	p.Lock.Lock()
-	defer p.Lock.Unlock()
-	if conn != nil {
+	if p.ActiveTotal > 0 {
 		p.ActiveTotal--
 	}
+	p.Lock.Unlock()
+	<-p.slots
 }
 
 /**
@@ -210,5 +264,7 @@ func (p *Pool) Remove(conn net.Conn) {
  * @Param options: Connection pool options
  */
 func (p *Pool) SetOptions(options PoolOptions) {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
 	p.Options = options
 }

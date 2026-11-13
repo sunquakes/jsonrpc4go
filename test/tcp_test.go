@@ -21,13 +21,11 @@ import (
 const CUSTOM_ERROR = "Custom Error"
 
 func TestTcpCall(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("tcp", 3601)
+	s, _ := jsonrpc4go.NewServer("tcp", 0)
 	s.Register(new(IntRpc))
-	go func() {
-		s.Start()
-	}()
+	go s.Start()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3601")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
 	params := Params{1, 2}
 	result := new(int)
 	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
@@ -37,13 +35,11 @@ func TestTcpCall(t *testing.T) {
 }
 
 func TestTcpCallMethod(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("tcp", 3602)
+	s, _ := jsonrpc4go.NewServer("tcp", 0)
 	s.Register(new(IntRpc))
-	go func() {
-		s.Start()
-	}()
+	go s.Start()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3602")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
 	params := Params{1, 2}
 	result := new(int)
 	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
@@ -53,13 +49,11 @@ func TestTcpCallMethod(t *testing.T) {
 }
 
 func TestTcpNotifyCall(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("tcp", 3603)
+	s, _ := jsonrpc4go.NewServer("tcp", 0)
 	s.Register(new(IntRpc))
-	go func() {
-		s.Start()
-	}()
+	go s.Start()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3603")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
 	params := Params{2, 3}
 	result := new(int)
 	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
@@ -69,13 +63,11 @@ func TestTcpNotifyCall(t *testing.T) {
 }
 
 func TestTcpBatchCall(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("tcp", 3604)
+	s, _ := jsonrpc4go.NewServer("tcp", 0)
 	s.Register(new(IntRpc))
-	go func() {
-		s.Start()
-	}()
+	go s.Start()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3604")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
 
 	result1 := new(int)
 	err1 := c.BatchAppend("Add1", Params{1, 6}, result1, false)
@@ -92,14 +84,12 @@ func TestTcpBatchCall(t *testing.T) {
 }
 
 func TestSetOption(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("tcp", 3605)
+	s, _ := jsonrpc4go.NewServer("tcp", 0)
 	s.SetOptions(server.TcpOptions{PackageEof: "aaaaaa", PackageMaxLength: 2 * 1024 * 1024})
 	s.Register(new(IntRpc))
-	go func() {
-		s.Start()
-	}()
+	go s.Start()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3605")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
 	c.SetOptions(client.TcpOptions{PackageEof: "aaaaaa", PackageMaxLength: 2 * 1024 * 1024})
 	params := Params{1, 2}
 	result := new(int)
@@ -111,7 +101,7 @@ func TestSetOption(t *testing.T) {
 
 func TestSetHooks(t *testing.T) {
 	params := Params{1, 2}
-	s, _ := jsonrpc4go.NewServer("tcp", 3606)
+	s, _ := jsonrpc4go.NewServer("tcp", 0)
 	s.SetBeforeFunc(func(id any, method string, p any) error {
 		if method != "Add" {
 			t.Errorf("Method expected be %s, but %s got", "Add", method)
@@ -133,11 +123,9 @@ func TestSetHooks(t *testing.T) {
 		return nil
 	})
 	s.Register(new(IntRpc))
-	go func() {
-		s.Start()
-	}()
+	go s.Start()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3606")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
 	result := new(int)
 	MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 	if *result != 3 {
@@ -147,16 +135,14 @@ func TestSetHooks(t *testing.T) {
 
 func TestSetHooksCustomError(t *testing.T) {
 	params := Params{1, 2}
-	s, _ := jsonrpc4go.NewServer("tcp", 3607)
+	s, _ := jsonrpc4go.NewServer("tcp", 0)
 	s.SetBeforeFunc(func(id any, method string, p any) error {
 		return errors.New(CUSTOM_ERROR)
 	})
 	s.Register(new(IntRpc))
-	go func() {
-		s.Start()
-	}()
+	go s.Start()
 	<-s.GetEvent()
-	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3607")
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
 	result := new(int)
 	err := c.Call("Add", &params, result, false)
 	if err.Error() != CUSTOM_ERROR {
@@ -166,13 +152,12 @@ func TestSetHooksCustomError(t *testing.T) {
 
 func TestRateLimit(t *testing.T) {
 	params := Params{1, 2}
-	s, _ := jsonrpc4go.NewServer("tcp", 3608)
+	s, _ := jsonrpc4go.NewServer("tcp", 0)
 	s.Register(new(IntRpc))
 	s.SetRateLimit(0.2, 1)
-	go func() {
-		s.Start()
-	}()
-	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3608")
+	go s.Start()
+	<-s.GetEvent()
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
 	result := new(int)
 	err := c.Call("Add", &params, result, false)
 	if err != nil {
@@ -215,19 +200,18 @@ func executeLongStringTests(t *testing.T, c client.Client, iterations int) {
 }
 
 func TestLongPackageTcpCall(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("tcp", 3609)
+	s, _ := jsonrpc4go.NewServer("tcp", 0)
 	s.SetOptions(server.TcpOptions{PackageEof: "\r\n", PackageMaxLength: 2 * 1024 * 1024})
 	s.Register(new(LongRpc))
-	go func() {
-		s.Start()
-	}()
+	go s.Start()
 	<-s.GetEvent()
+	addr := serverAddr(s)
 	var wg sync.WaitGroup
 	for i := 0; i < 11; i++ {
 		wg.Add(1)
 		go func(group *sync.WaitGroup) {
 			defer group.Done()
-			c, _ := jsonrpc4go.NewClient("LongRpc", "tcp", "127.0.0.1:3609")
+			c, _ := jsonrpc4go.NewClient("LongRpc", "tcp", addr)
 			c.SetOptions(client.TcpOptions{PackageEof: "\r\n", PackageMaxLength: 2 * 1024 * 1024})
 
 			executeLongStringTests(t, c, 100)
@@ -238,19 +222,18 @@ func TestLongPackageTcpCall(t *testing.T) {
 }
 
 func TestCoTcpCall(t *testing.T) {
-	s, _ := jsonrpc4go.NewServer("tcp", 3610)
+	s, _ := jsonrpc4go.NewServer("tcp", 0)
 	s.Register(new(IntRpc))
-	go func() {
-		s.Start()
-	}()
+	go s.Start()
 	<-s.GetEvent()
+	addr := serverAddr(s)
 
 	var wg sync.WaitGroup
 	for i := 0; i < 40; i++ {
 		wg.Add(1)
 		go func(group *sync.WaitGroup, index int) {
 			defer group.Done()
-			c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3610")
+			c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", addr)
 			for j := 0; j < 100; j++ {
 				params := Params{index, j}
 				result := new(int)
@@ -265,27 +248,25 @@ func TestCoTcpCall(t *testing.T) {
 }
 
 func TestFailConnect(t *testing.T) {
-	var err error
 	params := Params{1, 2}
-	// 测试连接失败的情况
-	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3611")
+	// First point the client at a port nothing is listening on, to verify failure.
+	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:1")
 	result := new(int)
+	var err error
 	for i := 0; i < 20; i++ {
 		err = c.Call("Add", &params, result, false)
 		if err == nil {
 			t.Errorf("Error expected be not nil, but nil got")
 		}
 	}
-	// 启动服务器
-	s, _ := jsonrpc4go.NewServer("tcp", 3611)
+	// Start the server on an OS-assigned port, then re-point the same client.
+	s, _ := jsonrpc4go.NewServer("tcp", 0)
 	s.Register(new(IntRpc))
-	go func() {
-		s.Start()
-	}()
+	go s.Start()
 	<-s.GetEvent()
-	// 测试连接成功的情况
+	c2, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
 	for i := 0; i < 20; i++ {
-		err = c.Call("Add", &params, result, false)
+		err = c2.Call("Add", &params, result, false)
 		if err != nil {
 			t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
 		}
@@ -293,27 +274,24 @@ func TestFailConnect(t *testing.T) {
 }
 
 func TestRibbonTcpCall(t *testing.T) {
-	// 启动第一个服务器
-	s1, _ := jsonrpc4go.NewServer("tcp", 3612)
+	// Start the first server.
+	s1, _ := jsonrpc4go.NewServer("tcp", 0)
 	s1.Register(new(IntRpc))
-	go func() {
-		s1.Start()
-	}()
+	go s1.Start()
 	<-s1.GetEvent()
-	// 启动第二个服务器
-	s2, _ := jsonrpc4go.NewServer("tcp", 3613)
+	// Start the second server.
+	s2, _ := jsonrpc4go.NewServer("tcp", 0)
 	s2.Register(new(IntRpc))
-	go func() {
-		s2.Start()
-	}()
+	go s2.Start()
 	<-s2.GetEvent()
+	addrList := serverAddr(s1) + "," + serverAddr(s2)
 
 	var wg sync.WaitGroup
 	for i := 0; i < 20; i++ {
 		wg.Add(1)
 		go func(group *sync.WaitGroup, index int) {
 			defer group.Done()
-			c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3612,127.0.0.1:3613")
+			c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", addrList)
 			for j := 0; j < 20; j++ {
 				params := Params{index, j}
 				result := new(int)
@@ -328,22 +306,21 @@ func TestRibbonTcpCall(t *testing.T) {
 }
 
 func TestTcpConsul(t *testing.T) {
+	srv, _ := jsonrpc4go.NewServer("tcp", 0)
+	srv.Register(new(IntRpc))
+	go srv.Start()
+	<-srv.GetEvent()
+	port := srv.(*server.TcpServer).Port
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `[{"AggregatedStatus":"passing","Service":{"ID":"IntRpc:3614","Service":"IntRpc","Tags":[],"Meta":{},"Port":3614,"Address":"127.0.0.1","TaggedAddresses":{"lan_ipv4":{"Address":"127.0.0.1","Port":3614},"wan_ipv4":{"Address":"127.0.0.1","Port":3614}},"Weights":{"Passing":1,"Warning":1},"EnableTagOverride":false,"Datacenter":"dc1"},"Checks":[{"Node":"1ae846e40d15","CheckID":"service:IntRpc:3614","Name":"Service 'IntRpc' check","Status":"passing","Notes":"","Output":"HTTP GET http://127.0.0.1:3614: 200 OK Output: ","ServiceID":"IntRpc:3614","ServiceName":"IntRpc","ServiceTags":null,"Type":"","ExposedPort":0,"Definition":{"Interval":"0s","Timeout":"0s","DeregisterCriticalServiceAfter":"0s","HTTP":"","Header":null,"Method":"","Body":"","TLSServerName":"","TLSSkipVerify":false,"TCP":"","UDP":"","GRPC":"","GRPCUseTLS":false},"CreateIndex":0,"ModifyIndex":0}]}]`)
+		fmt.Fprintf(w,
+			`[{"AggregatedStatus":"passing","Service":{"ID":"IntRpc:%d","Service":"IntRpc","Tags":[],"Meta":{},"Port":%d,"Address":"127.0.0.1","TaggedAddresses":{"lan_ipv4":{"Address":"127.0.0.1","Port":%d},"wan_ipv4":{"Address":"127.0.0.1","Port":%d}},"Weights":{"Passing":1,"Warning":1},"EnableTagOverride":false,"Datacenter":"dc1"},"Checks":[]}]`,
+			port, port, port, port)
 	}))
+	defer ts.Close()
 	dc, err := consul.NewConsul(ts.URL)
-	// dc, err := consul.NewConsul("http://localhost:8500?check=false&instanceId=1&interval=10s")
 	if err != nil {
 		t.Error(err.Error())
 	}
-	s, _ := jsonrpc4go.NewServer("tcp", 3614)
-	s.SetDiscovery(dc, "")
-	s.Register(new(IntRpc))
-	go func() {
-		s.Start()
-	}()
-	<-s.GetEvent()
-
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
 	params := Params{10, 11}
 	result := new(int)
@@ -354,20 +331,21 @@ func TestTcpConsul(t *testing.T) {
 }
 
 func TestTcpNacos(t *testing.T) {
+	srv, _ := jsonrpc4go.NewServer("tcp", 0)
+	srv.Register(new(IntRpc))
+	go srv.Start()
+	<-srv.GetEvent()
+	port := srv.(*server.TcpServer).Port
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `{"name":"DEFAULT_GROUP@@java_tcp","groupName":"DEFAULT_GROUP","clusters":"","cacheMillis":10000,"hosts":[{"instanceId":"127.0.0.1#3616#DEFAULT#DEFAULT_GROUP@@java_tcp","ip":"127.0.0.1","port":3616,"weight":1.0, "healthy":true,"enabled":true,"ephemeral":true,"clusterName":"DEFAULT","serviceName":"DEFAULT_GROUP@@java_tcp","metadata":{},"instanceHeartBeatInterval":5000,"instanceHeartBeatTimeOut":15000,"ipDeleteTimeout":30000, "instanceIdGenerator":"simple"}],"lastRefTime":1673444367069,"checksum":"","allIPs":false,"reachProtectionThreshold":false,"valid":true}`)
+		fmt.Fprintf(w,
+			`{"name":"DEFAULT_GROUP@@java_tcp","groupName":"DEFAULT_GROUP","clusters":"","cacheMillis":10000,"hosts":[{"instanceId":"127.0.0.1#%d#DEFAULT#DEFAULT_GROUP@@java_tcp","ip":"127.0.0.1","port":%d,"weight":1.0,"healthy":true,"enabled":true,"ephemeral":true,"clusterName":"DEFAULT","serviceName":"DEFAULT_GROUP@@java_tcp","metadata":{},"instanceHeartBeatInterval":5000,"instanceHeartBeatTimeOut":15000,"ipDeleteTimeout":30000,"instanceIdGenerator":"simple"}],"lastRefTime":1673444367069,"checksum":"","allIPs":false,"reachProtectionThreshold":false,"valid":true}`,
+			port, port)
 	}))
+	defer ts.Close()
 	dc, err := nacos.NewNacos(ts.URL)
-	// dc, err := nacos.NewNacos("http://localhost:8849?namespaceId=79f14f4e-f5e8-46b6-90b9-0ad105b8626d&groupName=test1")
 	if err != nil {
 		t.Error(err.Error())
 	}
-	s, _ := jsonrpc4go.NewServer("tcp", 3616)
-	s.SetDiscovery(dc, "")
-	s.Register(new(IntRpc))
-	go func() {
-		s.Start()
-	}()
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", dc)
 	params := Params{10, 11}
 	result := new(int)

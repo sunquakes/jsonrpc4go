@@ -176,17 +176,26 @@ func (svr *Server) Handler(b []byte) []byte {
 		return jsonE(nil, JsonRpc, ParseError)
 	}
 	var res any
-	if reflect.ValueOf(data).Kind() == reflect.Slice {
-		var resList []any
-		for _, v := range data.([]any) {
-			r := svr.SingleHandler(v.(map[string]any))
-			resList = append(resList, r)
+	switch v := data.(type) {
+	case []any:
+		// An empty batch is an invalid request per the JSON-RPC 2.0 spec.
+		if len(v) == 0 {
+			return jsonE(nil, JsonRpc, InvalidRequest)
+		}
+		resList := make([]any, 0, len(v))
+		for _, item := range v {
+			m, ok := item.(map[string]any)
+			if !ok {
+				// Guard against batch entries that are not request objects.
+				resList = append(resList, E(nil, JsonRpc, InvalidRequest))
+				continue
+			}
+			resList = append(resList, svr.SingleHandler(m))
 		}
 		res = resList
-	} else if reflect.ValueOf(data).Kind() == reflect.Map {
-		r := svr.SingleHandler(data.(map[string]any))
-		res = r
-	} else {
+	case map[string]any:
+		res = svr.SingleHandler(v)
+	default:
 		return jsonE(nil, JsonRpc, InvalidRequest)
 	}
 

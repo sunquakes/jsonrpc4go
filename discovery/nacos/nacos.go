@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sunquakes/jsonrpc4go/discovery"
@@ -53,6 +54,7 @@ type Nacos struct {
 	Ephemeral      string
 	HeartbeatList  []Service
 	HeartbeatRetry map[string]int
+	mu             sync.Mutex
 }
 
 /**
@@ -93,7 +95,13 @@ func NewNacos(rawURL string) (discovery.Driver, error) {
 		ephemeral = URL.Query().Get("ephemeral")
 
 	}
-	nacos := &Nacos{URL, URL.Query().Get("token"), ephemeral, make([]Service, 0), make(map[string]int)}
+	nacos := &Nacos{
+		URL:            URL,
+		Token:          URL.Query().Get("token"),
+		Ephemeral:      ephemeral,
+		HeartbeatList:  make([]Service, 0),
+		HeartbeatRetry: make(map[string]int),
+	}
 	return nacos, err
 }
 
@@ -145,7 +153,9 @@ func (d *Nacos) Register(name string, protocol string, hostname string, port int
 				return err
 			}
 		}
+		d.mu.Lock()
 		d.HeartbeatList = append(d.HeartbeatList, Service{hostname, port, true, name})
+		d.mu.Unlock()
 	}
 	return nil
 }
@@ -258,7 +268,11 @@ func (d *Nacos) Heartbeat() error {
  * @Receiver d: Nacos structure pointer
  */
 func (d *Nacos) DoHeartbeat() {
-	for _, service := range d.HeartbeatList {
+	d.mu.Lock()
+	services := make([]Service, len(d.HeartbeatList))
+	copy(services, d.HeartbeatList)
+	d.mu.Unlock()
+	for _, service := range services {
 		err := d.Beat(service.InstanceId, service.Ip, service.Port)
 		if err != nil {
 			key := fmt.Sprintf("%s-%d", service.Ip, service.Port)
@@ -273,9 +287,11 @@ func (d *Nacos) DoHeartbeat() {
  * @Param key: Service instance identifier (ip-port)
  */
 func (d *Nacos) RetryHeartbeat(key string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	if times, ok := d.HeartbeatRetry[key]; ok {
 		if times >= HEARTBEAT_RETRY_MAX {
-			d.RemoveHeartbeat(key)
+			d.removeHeartbeatLocked(key)
 		} else {
 			d.HeartbeatRetry[key]++
 		}
@@ -290,6 +306,12 @@ func (d *Nacos) RetryHeartbeat(key string) {
  * @Param key: Service instance identifier (ip-port)
  */
 func (d *Nacos) RemoveHeartbeat(key string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.removeHeartbeatLocked(key)
+}
+
+func (d *Nacos) removeHeartbeatLocked(key string) {
 	for i, service := range d.HeartbeatList {
 		if fmt.Sprintf("%s-%d", service.Ip, service.Port) == key {
 			d.HeartbeatList = append(d.HeartbeatList[:i], d.HeartbeatList[i+1:]...)
