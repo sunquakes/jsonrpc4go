@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"fmt"
 	"log"
 	"net"
 	"sync"
@@ -85,33 +84,11 @@ func (s *TcpServer) Start() {
 		s.Server.Sm.Range(register)
 	}
 	// Start the server
-	addr := fmt.Sprintf("0.0.0.0:%d", s.Port)
-	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
-	if err != nil {
-		log.Panic(err.Error())
-	}
-	listener, err := net.ListenTCP("tcp", tcpAddr)
-	if err != nil {
-		log.Panic(err.Error())
-	}
-	// If the caller asked for port 0, record the OS-assigned port so callers can reach us.
-	if s.Port == 0 {
-		if lnAddr, ok := listener.Addr().(*net.TCPAddr); ok {
-			s.Port = lnAddr.Port
-		}
-	}
+	ln := common.BindListener("0.0.0.0", &s.Port)
 	log.Printf("Listening tcp://0.0.0.0:%d", s.Port)
-	// Notify successful start: send the bound port on the Event channel so callers can reach us.
-	go func() {
-		time.Sleep(time.Second)
-		select {
-		case s.Event <- s.Port:
-		default:
-			// Drop if the channel is full to avoid blocking
-		}
-	}()
+	common.NotifyStarted(s.Port, s.Event)
 	for {
-		conn, err := listener.AcceptTCP()
+		conn, err := ln.Accept()
 		if err != nil {
 			log.Panic(err.Error())
 		}
