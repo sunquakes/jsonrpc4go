@@ -85,7 +85,7 @@ func (s *TcpServer) Start() {
 		s.Server.Sm.Range(register)
 	}
 	// Start the server
-	var addr = fmt.Sprintf("0.0.0.0:%d", s.Port)
+	addr := fmt.Sprintf("0.0.0.0:%d", s.Port)
 	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		log.Panic(err.Error())
@@ -94,12 +94,18 @@ func (s *TcpServer) Start() {
 	if err != nil {
 		log.Panic(err.Error())
 	}
+	// If the caller asked for port 0, record the OS-assigned port so callers can reach us.
+	if s.Port == 0 {
+		if lnAddr, ok := listener.Addr().(*net.TCPAddr); ok {
+			s.Port = lnAddr.Port
+		}
+	}
 	log.Printf("Listening tcp://0.0.0.0:%d", s.Port)
-	// Notify successful start: send 0 to the Event channel after 1 second to indicate the service is ready
+	// Notify successful start: send the bound port on the Event channel so callers can reach us.
 	go func() {
 		time.Sleep(time.Second)
 		select {
-		case s.Event <- 0:
+		case s.Event <- s.Port:
 		default:
 			// Drop if the channel is full to avoid blocking
 		}
