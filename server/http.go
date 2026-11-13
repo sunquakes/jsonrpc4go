@@ -2,7 +2,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -118,30 +117,14 @@ func (s *HttpServer) Start() {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleFunc)
-	// Bind the listener ourselves so we can resolve the OS-assigned port when Port==0.
-	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.Port))
-	if err != nil {
-		log.Panic(err.Error())
-	}
-	if s.Port == 0 {
-		if tcpAddr, ok := ln.Addr().(*net.TCPAddr); ok {
-			s.Port = tcpAddr.Port
-		}
-	}
+	ln := common.BindListener("0.0.0.0", &s.Port)
 	if s.Secure {
 		log.Printf("Listening https://0.0.0.0:%d", s.Port)
 	} else {
 		log.Printf("Listening http://0.0.0.0:%d", s.Port)
 	}
-	// Notify successful start: send the bound port on the Event channel so callers can reach us.
-	go func() {
-		time.Sleep(time.Second)
-		select {
-		case s.Event <- s.Port:
-		default:
-			// Drop if the channel is full to avoid blocking
-		}
-	}()
+	common.NotifyStarted(s.Port, s.Event)
+	var err error
 	if s.Secure {
 		err = http.ServeTLS(ln, mux, s.Options.CertPath, s.Options.KeyPath)
 	} else {
