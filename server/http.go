@@ -151,13 +151,12 @@ func (s *HttpServer) Start() {
  * @return bool - True if registration succeeded
  */
 func (s *HttpServer) DiscoveryRegister(key, value interface{}) bool {
-	err := s.Discovery.Register(key.(string), "http", s.Hostname, s.Port)
-	if err == nil {
-		return true
+	for {
+		if err := s.Discovery.Register(key.(string), "http", s.Hostname, s.Port); err == nil {
+			return true
+		}
+		time.Sleep(REGISTRY_RETRY_INTERVAL * time.Millisecond)
 	}
-	time.Sleep(REGISTRY_RETRY_INTERVAL * time.Millisecond)
-	s.DiscoveryRegister(key, value)
-	return false
 }
 
 /*
@@ -235,22 +234,18 @@ func (s *HttpServer) GetEvent() <-chan int {
  * @param r - The request
  */
 func (s *HttpServer) handleFunc(w http.ResponseWriter, r *http.Request) {
-	var (
-		err  error
-		data []byte
-	)
-	w.Header().Set("Content-Type", "application/json")
-	if data, err = io.ReadAll(r.Body); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	res := s.Server.Handler(data)
-	_, err = w.Write(res)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Panic(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(s.Server.Handler(data)); err != nil {
+		// A failed write usually means the client disconnected; do not take down the server.
+		log.Printf("write response failed: %v", err)
 	}
 }

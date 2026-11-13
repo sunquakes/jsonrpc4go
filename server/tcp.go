@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"log"
 	"net"
@@ -91,10 +90,11 @@ func (s *TcpServer) Start() {
 	if err != nil {
 		log.Panic(err.Error())
 	}
-	listener, _ := net.ListenTCP("tcp", tcpAddr)
+	listener, err := net.ListenTCP("tcp", tcpAddr)
+	if err != nil {
+		log.Panic(err.Error())
+	}
 	log.Printf("Listening tcp://0.0.0.0:%d", s.Port)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	// Notify successful start: send 0 to the Event channel after 1 second to indicate the service is ready
 	go func() {
 		time.Sleep(time.Second)
@@ -109,7 +109,7 @@ func (s *TcpServer) Start() {
 		if err != nil {
 			log.Panic(err.Error())
 		}
-		go s.handleFunc(ctx, conn)
+		go s.handleFunc(conn)
 	}
 }
 
@@ -120,13 +120,12 @@ func (s *TcpServer) Start() {
  * @return bool - True if registration succeeded
  */
 func (s *TcpServer) DiscoveryRegister(key, value interface{}) bool {
-	err := s.Discovery.Register(key.(string), "tcp", s.Hostname, s.Port)
-	if err == nil {
-		return true
+	for {
+		if err := s.Discovery.Register(key.(string), "tcp", s.Hostname, s.Port); err == nil {
+			return true
+		}
+		time.Sleep(REGISTRY_RETRY_INTERVAL * time.Millisecond)
 	}
-	time.Sleep(REGISTRY_RETRY_INTERVAL * time.Millisecond)
-	s.DiscoveryRegister(key, value)
-	return false
 }
 
 /*
@@ -199,43 +198,42 @@ func (s *TcpServer) GetEvent() <-chan int {
 
 /*
  * handleFunc handles incoming TCP connections
- * @param ctx - The context for the connection
  * @param conn - The TCP connection
  */
-func (s *TcpServer) handleFunc(ctx context.Context, conn net.Conn) {
+func (s *TcpServer) handleFunc(conn net.Conn) {
 	defer conn.Close()
-	select {
-	case <-ctx.Done():
-		return
-	default:
-		//	do nothing
-	}
 	eofb := []byte(s.Options.PackageEof)
-	eofl := len(eofb)
+	if len(eofb) == 0 {
+		common.Debug("package eof is empty")
+		return
+	}
+	maxLength := s.Options.PackageMaxLength
+	if maxLength <= 0 {
+		maxLength = 1024 * 1024 * 2
+	}
+	// Reuse a single read buffer for the lifetime of the connection.
+	buf := make([]byte, 32*1024)
 	for {
-		var (
-			data []byte
-		)
-		l := 0
+		var data []byte
 		for {
-			var buf = make([]byte, s.Options.PackageMaxLength)
 			n, err := conn.Read(buf)
-			if err != nil {
-				if n == 0 {
+			if n > 0 {
+				data = append(data, buf[:n]...)
+				if len(data) >= len(eofb) && bytes.HasSuffix(data, eofb) {
+					break
+				}
+				if int64(len(data)) > maxLength {
+					common.Debug("package exceeds max length")
 					return
 				}
-				common.Debug(err.Error())
 			}
-			l += n
-			data = append(data, buf[:n]...)
-			if bytes.Equal(data[l-eofl:], eofb) {
-				break
+			if err != nil {
+				return
 			}
 		}
-		res := s.Server.Handler(data[:l-eofl])
+		res := s.Server.Handler(data[:len(data)-len(eofb)])
 		res = append(res, eofb...)
-		_, err := conn.Write(res)
-		if err != nil {
+		if _, err := conn.Write(res); err != nil {
 			common.Debug(err.Error())
 			return
 		}
