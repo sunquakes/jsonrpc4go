@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+## [v1.7.1] - 2026-11-16
+
+### CI
+- Made govulncheck non-blocking while the minimum Go version stays 1.23.
+- Ran golangci-lint only on Go 1.23 to avoid export data incompatibility on Go 1.26/1.27.
+
 ## [v1.7.0] - 2026-11-16
 
 ### Added
