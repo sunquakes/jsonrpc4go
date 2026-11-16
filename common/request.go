@@ -69,40 +69,20 @@ type NotifyRequest struct {
  * @Return err: Error message
  */
 func ParseRequestMethod(method string) (sName string, mName string, err error) {
-	var (
-		m  string
-		sp int
-	)
-	first := method[0:1]
-	if first == "." || first == "/" {
-		method = method[1:]
+	const msg = "rpc: method request ill-formed: %s; need x.y or x/y"
+	// Tolerate an optional leading separator, as sent by some clients.
+	method = strings.TrimLeft(method, "./")
+	sep := "/"
+	if !strings.Contains(method, sep) {
+		sep = "."
 	}
-	msg := "rpc: method request ill-formed: %s; need x.y or x/y"
-	if strings.Count(method, ".") != 1 && strings.Count(method, "/") != 1 {
-		m = fmt.Sprintf(msg, method)
+	sp := strings.LastIndex(method, sep)
+	if sp <= 0 || sp == len(method)-1 {
+		m := fmt.Sprintf(msg, method)
 		Debug(m)
-		return sName, mName, errors.New(m)
+		return "", "", errors.New(m)
 	}
-	if strings.Count(method, ".") == 1 {
-		sp = strings.LastIndex(method, ".")
-		if sp < 0 {
-			m = fmt.Sprintf(msg, method)
-			return sName, mName, errors.New(m)
-		}
-
-		sName = method[:sp]
-		mName = method[sp+1:]
-	} else if strings.Count(method, "/") == 1 {
-		sp = strings.LastIndex(method, "/")
-		if sp < 0 {
-			m = fmt.Sprintf(msg, method)
-			return sName, mName, errors.New(m)
-		}
-
-		sName = method[:sp]
-		mName = method[sp+1:]
-	}
-	return sName, mName, err
+	return method[:sp], method[sp+1:], nil
 }
 
 /**
@@ -174,10 +154,14 @@ func GetStruct(d any, s any) error {
 		m string
 		t reflect.Type
 	)
-	if reflect.TypeOf(s).Kind() != reflect.Ptr {
-		m = fmt.Sprintf("reflect: Elem of invalid type %s, need reflect.Ptr", reflect.TypeOf(s))
+	if s == nil || reflect.TypeOf(s).Kind() != reflect.Ptr {
+		m = fmt.Sprintf("reflect: Elem of invalid type %v, need reflect.Ptr", s)
 		Debug(m)
 		return errors.New(m)
+	}
+	// A missing "params" member is valid: keep the zero value instead of panicking.
+	if d == nil {
+		return nil
 	}
 	t = reflect.TypeOf(s).Elem()
 	var jsonMap = make(map[string]any)

@@ -13,25 +13,33 @@ jobs:
 
   security-scan:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ['1.23', '1.24', '1.25', '1.26', '1.27']
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Security Scan with govulncheck
+
+    - name: Security Scan with govulncheck (Go ${{ matrix.go-version }})
       uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee
       with:
-        go-version-input: '1.24'
+        go-version-input: ${{ matrix.go-version }}
         # Only scan the main module
         go-package: ./...
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ['1.23', '1.24', '1.25', '1.26', '1.27']
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Go
+    - name: Set up Go ${{ matrix.go-version }}
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: ${{ matrix.go-version }}
 
     - name: Build
       run: go build -v ./...
@@ -50,13 +58,17 @@ jobs:
 
   fuzz-test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ['1.23', '1.24', '1.25', '1.26', '1.27']
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Go
+    - name: Set up Go ${{ matrix.go-version }}
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24'
+        go-version: ${{ matrix.go-version }}
 
     - name: Fuzz test
       run: |

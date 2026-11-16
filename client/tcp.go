@@ -2,10 +2,9 @@ package client
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net"
-	"strconv"
-	"time"
 
 	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/discovery"
@@ -128,7 +127,7 @@ func (c *TcpClient) BatchCall() error {
 		if v.IsNotify {
 			req = common.Rs(nil, method, v.Params)
 		} else {
-			req = common.Rs(strconv.FormatInt(time.Now().Unix(), 10), method, v.Params)
+			req = common.Rs(nextRequestID(), method, v.Params)
 		}
 		br = append(br, req)
 	}
@@ -175,7 +174,7 @@ func (c *TcpClient) Call(method string, params any, result any, isNotify bool) e
 	if isNotify {
 		req = common.JsonRs(nil, method, params)
 	} else {
-		req = common.JsonRs(strconv.FormatInt(time.Now().Unix(), 10), method, params)
+		req = common.JsonRs(nextRequestID(), method, params)
 	}
 	req = append(req, []byte(c.Options.PackageEof)...)
 	err = c.handleFunc(req, result)
@@ -189,51 +188,65 @@ func (c *TcpClient) Call(method string, params any, result any, isNotify bool) e
  * @Param result: Result
  * @Return error: Error message
  */
-func (c *TcpClient) handleFunc(b []byte, result any) error {
-	var (
-		err  error
-		conn net.Conn
-	)
-
-	conn, err = c.Pool.Borrow()
-	if err == nil {
-		_, err = conn.Write(b)
-	}
+func (c *TcpClient) handleFunc(b []byte, result any) (err error) {
+	conn, err := c.Pool.Borrow()
 	if err != nil {
+		return err
+	}
+	// Return broken connections to the pool by removing them instead of reusing.
+	defer func() {
+		if err != nil {
+			c.Pool.Remove(conn)
+			return
+		}
+		c.Pool.Release(conn)
+	}()
+
+	if _, err = conn.Write(b); err != nil {
+		// The connection may be stale; replace it and retry once.
 		conn, err = c.Pool.BorrowAfterRemove(conn)
 		if err != nil {
-			c.Pool.Remove(conn)
 			return err
 		}
-		_, err = conn.Write(b)
-		if err != nil {
-			c.Pool.Remove(conn)
+		if _, err = conn.Write(b); err != nil {
 			return err
 		}
 	}
-	defer c.Pool.Release(conn)
+	return readPackage(conn, c.Options, result)
+}
 
-	eofb := []byte(c.Options.PackageEof)
-	eofl := len(eofb)
-	var (
-		data []byte
-	)
-	l := 0
+/*
+ * readPackage reads a single delimited response packet from conn.
+ * @param conn - The TCP connection
+ * @param options - The TCP client options
+ * @param result - The result of the request
+ * @return error - An error if the request failed
+ */
+func readPackage(conn net.Conn, options TcpOptions, result any) error {
+	eofb := []byte(options.PackageEof)
+	if len(eofb) == 0 {
+		return errors.New("package eof is empty")
+	}
+	maxLength := options.PackageMaxLength
+	if maxLength <= 0 {
+		maxLength = 1024 * 1024 * 2
+	}
+	// Reuse a single read buffer instead of allocating the max package size per read.
+	buf := make([]byte, 32*1024)
+	var data []byte
 	for {
-		var buf = make([]byte, c.Options.PackageMaxLength)
 		n, readErr := conn.Read(buf)
-		if readErr != nil {
-			if n == 0 {
-				return readErr
+		if n > 0 {
+			data = append(data, buf[:n]...)
+			if len(data) >= len(eofb) && bytes.HasSuffix(data, eofb) {
+				return common.GetResult(data[:len(data)-len(eofb)], result)
 			}
-			common.Debug(readErr.Error())
+			if int64(len(data)) > maxLength {
+				return errors.New("package exceeds max length")
+			}
 		}
-		l += n
-		data = append(data, buf[:n]...)
-		if bytes.Equal(data[l-eofl:], eofb) {
-			break
+		if readErr != nil {
+			return readErr
 		}
 	}
-	err = common.GetResult(data[:l-eofl], result)
-	return err
 }

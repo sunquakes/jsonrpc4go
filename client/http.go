@@ -7,12 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/sunquakes/jsonrpc4go/common"
 	"github.com/sunquakes/jsonrpc4go/discovery"
@@ -55,6 +54,9 @@ type HttpClient struct {
 	AddressList []*AddressInfo
 	RequestList []*common.SingleRequest
 	Options     *HttpOptions
+
+	lock   sync.Mutex
+	client *http.Client
 }
 
 /*
@@ -95,13 +97,10 @@ func (p *Http) NewClient() Client {
  */
 func NewHttpClient(name string, protocol string, address string, dc discovery.Driver) *HttpClient {
 	c := &HttpClient{
-		name,
-		protocol,
-		address,
-		dc,
-		nil,
-		nil,
-		nil,
+		Name:      name,
+		Protocol:  protocol,
+		Address:   address,
+		Discovery: dc,
 	}
 	c.SetAddressList()
 	return c
@@ -113,7 +112,11 @@ func NewHttpClient(name string, protocol string, address string, dc discovery.Dr
  */
 func (c *HttpClient) SetOptions(httpOptions any) {
 	// Set http request options.
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	c.Options = httpOptions.(*HttpOptions)
+	// Reset the cached client so new TLS settings take effect.
+	c.client = nil
 	if c.Protocol == HTTPS_PROTOCOL && c.Options != nil && c.Options.CaPath != "" {
 		file, err := os.Open(c.Options.CaPath)
 		if err != nil {
@@ -130,6 +133,24 @@ func (c *HttpClient) SetOptions(httpOptions any) {
 			RootCAs: caCertPool,
 		}
 	}
+}
+
+/*
+ * httpClient returns a shared HTTP client so connections can be reused.
+ * @return *http.Client - The HTTP client
+ */
+func (c *HttpClient) httpClient() *http.Client {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.client == nil {
+		// Clone the default transport to keep its sane defaults (proxy, timeouts, pooling).
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		if c.Protocol == HTTPS_PROTOCOL && c.Options != nil && c.Options.TLSClientConfig != nil {
+			transport.TLSClientConfig = c.Options.TLSClientConfig
+		}
+		c.client = &http.Client{Transport: transport}
+	}
+	return c.client
 }
 
 /*
@@ -177,7 +198,7 @@ func (c *HttpClient) BatchCall() error {
 		if v.IsNotify {
 			req = common.Rs(nil, method, v.Params)
 		} else {
-			req = common.Rs(strconv.FormatInt(time.Now().Unix(), 10), method, v.Params)
+			req = common.Rs(nextRequestID(), method, v.Params)
 		}
 		br = append(br, req)
 	}
@@ -204,7 +225,7 @@ func (c *HttpClient) Call(method string, params any, result any, isNotify bool) 
 	if isNotify {
 		req = common.JsonRs(nil, method, params)
 	} else {
-		req = common.JsonRs(strconv.FormatInt(time.Now().Unix(), 10), method, params)
+		req = common.JsonRs(nextRequestID(), method, params)
 	}
 	err = c.handleFunc(req, result)
 	return err
@@ -222,12 +243,7 @@ func (c *HttpClient) handleFunc(b []byte, result any) error {
 		return err
 	}
 	url := fmt.Sprintf("%s://%s", c.Protocol, address)
-	transport := &http.Transport{}
-	if c.Protocol == HTTPS_PROTOCOL && c.Options != nil && c.Options.TLSClientConfig != nil {
-		transport.TLSClientConfig = c.Options.TLSClientConfig
-	}
-	client := &http.Client{Transport: transport}
-	resp, err := client.Post(url, "application/json", bytes.NewReader(b))
+	resp, err := c.httpClient().Post(url, "application/json", bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -236,26 +252,32 @@ func (c *HttpClient) handleFunc(b []byte, result any) error {
 	if err != nil {
 		return err
 	}
-	err = common.GetResult(body, result)
-	return err
+	return common.GetResult(body, result)
 }
 
 /*
  * SetAddressList sets the address list from the discovery service
  */
 func (c *HttpClient) SetAddressList() {
-	var (
-		err error
-	)
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.setAddressList()
+}
+
+/*
+ * setAddressList refreshes the address list. c.lock must be held by the caller.
+ */
+func (c *HttpClient) setAddressList() {
 	address := c.Address
 	if c.Discovery != nil {
+		var err error
 		address, err = c.Discovery.Get(c.Name)
 		if err != nil {
 			common.Debug(err.Error())
 		}
 	}
 	addresses := strings.Split(address, ",")
-	addressList := make([]*AddressInfo, 0)
+	addressList := make([]*AddressInfo, 0, len(addresses))
 	for _, v := range addresses {
 		addressList = append(addressList, &AddressInfo{
 			Address: v,
@@ -271,24 +293,23 @@ func (c *HttpClient) SetAddressList() {
  * @return error - An error if no address is available
  */
 func (c *HttpClient) GetAddress() (string, error) {
-	size := len(c.AddressList)
-	if size == 0 {
-		c.SetAddressList()
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if len(c.AddressList) == 0 {
+		c.setAddressList()
 	}
-	size = len(c.AddressList)
+	size := len(c.AddressList)
 	if size == 0 {
 		return "", errors.New("fail to get service url")
 	}
 	if size == 1 {
 		return c.AddressList[0].Address, nil
 	}
-	// Randomly select two nodes
-	randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
-	index1 := randSource.Intn(size)
-	index2 := randSource.Intn(size)
-	// Make sure the two nodes are different
+	// Randomly select two nodes and pick the less loaded one.
+	index1 := rand.IntN(size)
+	index2 := rand.IntN(size)
 	for index1 == index2 {
-		index2 = rand.Intn(size)
+		index2 = rand.IntN(size)
 	}
 	if c.AddressList[index1].Load < c.AddressList[index2].Load {
 		c.AddressList[index1].Load++

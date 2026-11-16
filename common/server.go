@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"net"
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/time/rate"
 )
@@ -176,17 +179,26 @@ func (svr *Server) Handler(b []byte) []byte {
 		return jsonE(nil, JsonRpc, ParseError)
 	}
 	var res any
-	if reflect.ValueOf(data).Kind() == reflect.Slice {
-		var resList []any
-		for _, v := range data.([]any) {
-			r := svr.SingleHandler(v.(map[string]any))
-			resList = append(resList, r)
+	switch v := data.(type) {
+	case []any:
+		// An empty batch is an invalid request per the JSON-RPC 2.0 spec.
+		if len(v) == 0 {
+			return jsonE(nil, JsonRpc, InvalidRequest)
+		}
+		resList := make([]any, 0, len(v))
+		for _, item := range v {
+			m, ok := item.(map[string]any)
+			if !ok {
+				// Guard against batch entries that are not request objects.
+				resList = append(resList, E(nil, JsonRpc, InvalidRequest))
+				continue
+			}
+			resList = append(resList, svr.SingleHandler(m))
 		}
 		res = resList
-	} else if reflect.ValueOf(data).Kind() == reflect.Map {
-		r := svr.SingleHandler(data.(map[string]any))
-		res = r
-	} else {
+	case map[string]any:
+		res = svr.SingleHandler(v)
+	default:
 		return jsonE(nil, JsonRpc, InvalidRequest)
 	}
 
@@ -342,4 +354,49 @@ func Capitalize(str string) string {
 		}
 	}
 	return upperStr
+}
+
+/*
+ * BindListener binds a TCP listener on host:port and back-fills port with
+ * the OS-assigned value when the caller asked for port 0.
+ * Panics on bind failure, matching the style used throughout this package.
+ *
+ * Parameters:
+ *   host string - Host to bind on (e.g. "0.0.0.0")
+ *   port *int   - Pointer to the requested port; updated in place when 0
+ *
+ * Returns:
+ *   net.Listener - The bound listener, callers cast to *net.TCPListener if needed
+ */
+func BindListener(host string, port *int) net.Listener {
+	ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, *port))
+	if err != nil {
+		log.Panic(err.Error())
+	}
+	if *port == 0 {
+		if tcpAddr, ok := ln.Addr().(*net.TCPAddr); ok {
+			*port = tcpAddr.Port
+		}
+	}
+	return ln
+}
+
+/*
+ * NotifyStarted sends the bound port on ch after a short delay so callers
+ * can begin connecting once the server is accepting connections.
+ * The send is non-blocking; a full channel is silently dropped to keep
+ * the server goroutine from stalling.
+ *
+ * Parameters:
+ *   port int      - The bound port number to report
+ *   ch   chan<- int - Channel on which callers are waiting for readiness
+ */
+func NotifyStarted(port int, ch chan<- int) {
+	go func() {
+		time.Sleep(time.Second)
+		select {
+		case ch <- port:
+		default:
+		}
+	}()
 }

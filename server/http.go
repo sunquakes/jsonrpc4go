@@ -2,7 +2,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -118,26 +117,18 @@ func (s *HttpServer) Start() {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleFunc)
-	var url = fmt.Sprintf("0.0.0.0:%d", s.Port)
+	ln := common.BindListener("0.0.0.0", &s.Port)
 	if s.Secure {
 		log.Printf("Listening https://0.0.0.0:%d", s.Port)
 	} else {
 		log.Printf("Listening http://0.0.0.0:%d", s.Port)
 	}
-	// Notify successful start: send 0 to the Event channel after 1 second to indicate the service is ready
-	go func() {
-		time.Sleep(time.Second)
-		select {
-		case s.Event <- 0:
-		default:
-			// Drop if the channel is full to avoid blocking
-		}
-	}()
+	common.NotifyStarted(s.Port, s.Event)
 	var err error
 	if s.Secure {
-		err = http.ListenAndServeTLS(url, s.Options.CertPath, s.Options.KeyPath, mux)
+		err = http.ServeTLS(ln, mux, s.Options.CertPath, s.Options.KeyPath)
 	} else {
-		err = http.ListenAndServe(url, mux)
+		err = http.Serve(ln, mux)
 	}
 	if err != nil {
 		log.Panic(err.Error())
@@ -151,13 +142,12 @@ func (s *HttpServer) Start() {
  * @return bool - True if registration succeeded
  */
 func (s *HttpServer) DiscoveryRegister(key, value interface{}) bool {
-	err := s.Discovery.Register(key.(string), "http", s.Hostname, s.Port)
-	if err == nil {
-		return true
+	for {
+		if err := s.Discovery.Register(key.(string), "http", s.Hostname, s.Port); err == nil {
+			return true
+		}
+		time.Sleep(REGISTRY_RETRY_INTERVAL * time.Millisecond)
 	}
-	time.Sleep(REGISTRY_RETRY_INTERVAL * time.Millisecond)
-	s.DiscoveryRegister(key, value)
-	return false
 }
 
 /*
@@ -235,22 +225,18 @@ func (s *HttpServer) GetEvent() <-chan int {
  * @param r - The request
  */
 func (s *HttpServer) handleFunc(w http.ResponseWriter, r *http.Request) {
-	var (
-		err  error
-		data []byte
-	)
-	w.Header().Set("Content-Type", "application/json")
-	if data, err = io.ReadAll(r.Body); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	res := s.Server.Handler(data)
-	_, err = w.Write(res)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Panic(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if _, err := w.Write(s.Server.Handler(data)); err != nil {
+		// A failed write usually means the client disconnected; do not take down the server.
+		log.Printf("write response failed: %v", err)
 	}
 }

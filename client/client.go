@@ -1,5 +1,18 @@
 package client
 
+import (
+	"strconv"
+	"sync/atomic"
+)
+
+// requestID generates unique request identifiers for this process.
+var requestID atomic.Uint64
+
+// nextRequestID returns a unique JSON-RPC request id.
+func nextRequestID() string {
+	return strconv.FormatUint(requestID.Add(1), 10)
+}
+
 /*
  * Protocol defines the interface for client protocol implementations.
  */

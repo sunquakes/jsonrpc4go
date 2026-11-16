@@ -3,7 +3,6 @@ package common
 import (
 	"encoding/json"
 	"errors"
-	"reflect"
 )
 
 /**
@@ -146,13 +145,17 @@ func GetSingleResponse(jsonData map[string]any, result any) error {
 		err error
 	)
 	emData, ok := jsonData["error"]
-	if ok {
+	if ok && emData != nil {
 		resErr := new(Error)
 		if err := GetStruct(emData, resErr); err != nil {
 			return err
 		}
 		Debug(resErr.Message)
 		return errors.New(resErr.Message)
+	}
+	// Notifications have no result to decode.
+	if result == nil {
+		return nil
 	}
 	jsonStr, err := json.Marshal(jsonData["result"])
 	if err != nil {
@@ -174,26 +177,34 @@ func GetSingleResponse(jsonData map[string]any, result any) error {
  * @Return error: Error information
  */
 func GetResult(b []byte, result any) error {
-	var (
-		err      error
-		jsonData any
-	)
-	err = json.Unmarshal(b, &jsonData)
-	if err != nil {
+	var jsonData any
+	if err := json.Unmarshal(b, &jsonData); err != nil {
 		Debug(err)
+		return err
 	}
-	if reflect.ValueOf(jsonData).Kind() == reflect.Map {
-		err = GetSingleResponse(jsonData.(map[string]any), result)
-		if err != nil {
-			return err
+	switch data := jsonData.(type) {
+	case map[string]any:
+		return GetSingleResponse(data, result)
+	case []any:
+		results, ok := result.([]*SingleRequest)
+		if !ok {
+			return errors.New("json: batch result must be a []*SingleRequest")
 		}
-	} else if reflect.ValueOf(jsonData).Kind() == reflect.Slice {
-		for k, v := range jsonData.([]any) {
-			err = GetSingleResponse(v.(map[string]any), (result.([]*SingleRequest)[k].Result))
-			if err != nil {
-				*(result.([]*SingleRequest)[k].Error) = err
+		if len(results) != len(data) {
+			return errors.New("json: batch response length does not match request length")
+		}
+		for k, v := range data {
+			m, ok := v.(map[string]any)
+			if !ok {
+				continue
+			}
+			if err := GetSingleResponse(m, results[k].Result); err != nil {
+				if results[k].Error != nil {
+					*results[k].Error = err
+				}
 			}
 		}
+		return nil
 	}
 	return nil
 }

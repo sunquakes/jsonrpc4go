@@ -1,3 +1,25 @@
+## [Unreleased]
+
+## [v1.7.0] - 2026-11-16
+
+### Added
+- Added `DEFAULT_MIN_IDLE`, `DEFAULT_MAX_ACTIVE` and `CONNECT_TIMEOUT` pool constants.
+- Added `common.BindListener` and `common.NotifyStarted` server start helpers.
+
+### Changed
+- Reused HTTP connections through a cached client with a cloned default transport.
+- Generated globally unique request IDs with an atomic counter.
+- Released pooled connections without dialing while holding the lock.
+- Server tests now bind port 0 and use the OS-assigned port.
+
+### Fixed
+- Guarded the nacos heartbeat list against concurrent access.
+- Prevented panics on malformed JSON-RPC requests and empty batches.
+- Fixed connection pool deadlocks and stale connection retries.
+
+### CI
+- Pinned the minimum Go version to 1.23 and expanded the test matrix to 1.23-1.27.
+
 ## [v1.6.8] - 2026-01-11
 
 ### Added

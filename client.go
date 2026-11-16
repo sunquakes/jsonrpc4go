@@ -2,7 +2,6 @@ package jsonrpc4go
 
 import (
 	"errors"
-	"reflect"
 	"strings"
 
 	"github.com/sunquakes/jsonrpc4go/client"
@@ -23,10 +22,13 @@ func NewClient(name string, protocol string, server any) (client.Client, error) 
 		address string
 		dc      discovery.Driver
 	)
-	if reflect.TypeOf(server).Kind() == reflect.String {
-		address = server.(string)
-	} else {
-		dc = server.(discovery.Driver)
+	switch v := server.(type) {
+	case string:
+		address = v
+	case discovery.Driver:
+		dc = v
+	default:
+		return nil, errors.New("the server must be an address string or a discovery.Driver")
 	}
 
 	switch strings.ToLower(protocol) {
