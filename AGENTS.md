@@ -1,5 +1,33 @@
 # AGENTS
 
+## Versioning
+
+Determine the next version from the latest released tag before preparing a
+release. Tags and changelog headings both use the `vx.y.z` form because this is
+a Go module.
+
+1. **Find the latest tag.** Run
+   `git fetch --tags origin` and then
+   `git ls-remote --tags origin | sed 's#.*refs/tags/##' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1`.
+   Use `ls-remote` rather than `git describe` because sandbox checkouts are
+   often shallow and cannot walk back to older tags.
+2. **Inspect what changed since that tag.** Run
+   `git log --oneline <tag>..develop` and
+   `git diff <tag>..develop -- '*.go'`.
+3. **Apply semantic versioning.**
+   - **major** (`x.0.0`): breaking change - an exported identifier is removed
+     or renamed, or its signature/behavior breaks existing callers.
+   - **minor** (`x.y.0`): backwards-compatible new functionality - a new
+     exported function, type, constant, or variable that callers can adopt.
+   - **patch** (`x.y.z`): everything else - `fix`, `refactor`, `perf`, `docs`,
+     `test`, `build`, `ci`, and dependency bumps.
+4. **Confirm against the exported surface.** Run
+   `git diff <tag>..develop -- '*.go' | grep -E '^[+-](func|type|const|var) [A-Z]|^[+-]func \([^)]*\) [A-Z]'`.
+   Added exports only means minor; any removed or changed export means major;
+   no export changes means patch.
+5. **Carry the result into `CHANGELOG.md`.** The new heading must match the tag
+   exactly, for example `## [vX.Y.Z] - YYYY-MM-DD`.
+
 ## Releasing
 
 When the user defines a release version (`x.y.z`), execute these steps in this
