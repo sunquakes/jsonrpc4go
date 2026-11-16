@@ -49,9 +49,10 @@ exact order. Do not stop halfway and do not reorder them:
    and create a lightweight tag `vx.y.z` on the merge commit
    (`git tag vx.y.z`). Stash unrelated local edits first if `git pull` refuses to
    run.
-5. **Push the tag to the remote.** `git push origin vx.y.z` - this is the last
-   step because pushing the tag triggers the `Create Release` workflow (GitHub
-   Release, docs deploy). Verify that the workflow run completes.
+5. **Push the tag to the remote.** `git push origin vx.y.z`. This repository has
+   no tag-triggered release workflow, so the tag itself is the release artifact.
+   Verify that the `Go` workflow run triggered by the release PR merge on `main`
+   completed successfully.
 
 Never create or push a release tag before the code is merged to `main`, never
 tag from `develop`, and never publish a release manually.
