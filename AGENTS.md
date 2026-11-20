@@ -1,5 +1,14 @@
 # AGENTS
 
+## Go Changes
+
+After adding a function, run `go version` to check the active toolchain. If it is
+Go 1.26 or newer, review the added code for optimization opportunities and apply
+the relevant ones from the prompt. Preserve compatibility with Go 1.23 and newer:
+do not introduce language features, standard-library APIs, or module requirements
+that raise the version declared in `go.mod`. Format the changed code and run the
+relevant Go tests after optimizing it.
+
 ## Versioning
 
 Determine the next version from the latest released tag before preparing a
