@@ -1,5 +1,34 @@
 # AGENTS
 
+## Go 1.26 Modernization
+
+After adding a Go function, run `go version`. If the active toolchain is Go 1.26
+or newer and the module maintains compatibility with Go 1.23 or newer, check the
+code with the modernized `go fix` workflow:
+
+1. Keep the function implementation and modernization changes separately
+   reviewable. Do not create a commit unless the user requests one.
+2. From the module root, preview changes with `go fix -diff ./...`. Check for
+   package-loading and type-checking diagnostics; do not mistake an empty diff
+   caused by failed analysis for a clean result. A non-zero exit status can also
+   mean that differences were found.
+3. Review every proposed change before applying it. Preserve behavior, including
+   return values, errors, evaluation order, nil versus empty slices, and JSON or
+   other serialization results. Use `go tool fix help` to confirm the available
+   analyzers and their defaults; do not enable behavior-changing analyzers such
+   as `appendclipped` merely to produce more changes.
+4. Apply only accepted, relevant fixes using the same analyzer selection,
+   package pattern, and build configuration used for the preview, for example
+   `go fix ./...`. If the preview is too broad or contains unwanted changes,
+   narrow the analyzer or package scope and preview again instead of applying
+   unrelated changes.
+5. Do not raise the `go` version in `go.mod` to unlock fixes. Respect build tags
+   and file-level language versions, and separately check each supported
+   `GOOS`/`GOARCH` when necessary. Change generators rather than generated files.
+6. Inspect the resulting Git diff, format changed code, and run `go test ./...`
+   plus any relevant behavioral checks. A successful command does not replace
+   reviewing external behavior.
+
 ## Versioning
 
 Determine the next version from the latest released tag before preparing a
