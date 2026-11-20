@@ -190,7 +190,7 @@ func executeLongStringTests(t *testing.T, c client.Client, iterations int) {
 	params := LongParams{LongString1, LongString2}
 	result := new(string)
 
-	for j := 0; j < iterations; j++ {
+	for range iterations {
 		MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
 		ls := LongString1 + LongString2
 		if *result != ls {
@@ -207,7 +207,7 @@ func TestLongPackageTcpCall(t *testing.T) {
 	<-s.GetEvent()
 	addr := serverAddr(s)
 	var wg sync.WaitGroup
-	for i := 0; i < 11; i++ {
+	for range 11 {
 		wg.Add(1)
 		go func(group *sync.WaitGroup) {
 			defer group.Done()
@@ -229,12 +229,12 @@ func TestCoTcpCall(t *testing.T) {
 	addr := serverAddr(s)
 
 	var wg sync.WaitGroup
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		wg.Add(1)
 		go func(group *sync.WaitGroup, index int) {
 			defer group.Done()
 			c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", addr)
-			for j := 0; j < 100; j++ {
+			for j := range 100 {
 				params := Params{index, j}
 				result := new(int)
 				MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
@@ -253,7 +253,7 @@ func TestFailConnect(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:1")
 	result := new(int)
 	var err error
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		err = c.Call("Add", &params, result, false)
 		if err == nil {
 			t.Errorf("Error expected be not nil, but nil got")
@@ -265,7 +265,7 @@ func TestFailConnect(t *testing.T) {
 	go s.Start()
 	<-s.GetEvent()
 	c2, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		err = c2.Call("Add", &params, result, false)
 		if err != nil {
 			t.Errorf(EQUAL_MESSAGE_TEMPLETE, params.A, params.B, 3, *result)
@@ -287,12 +287,12 @@ func TestRibbonTcpCall(t *testing.T) {
 	addrList := serverAddr(s1) + "," + serverAddr(s2)
 
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		wg.Add(1)
 		go func(group *sync.WaitGroup, index int) {
 			defer group.Done()
 			c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", addrList)
-			for j := 0; j < 20; j++ {
+			for j := range 20 {
 				params := Params{index, j}
 				result := new(int)
 				MakeRpcCallWithErrorCheck(t, c, "Add", &params, result)
