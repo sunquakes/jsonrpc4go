@@ -3,8 +3,8 @@
 ## Go 1.26 Modernization
 
 After adding a Go function, run `go version`. If the active toolchain is Go 1.26
-or newer and the module maintains compatibility with Go 1.23 or newer, check the
-code with the modernized `go fix` workflow:
+or newer, check the code with the modernized `go fix` workflow. Use the `go`
+directive in `go.mod` as the compatibility target rather than a fixed Go version:
 
 1. Keep the function implementation and modernization changes separately
    reviewable. Do not create a commit unless the user requests one.
@@ -22,9 +22,10 @@ code with the modernized `go fix` workflow:
    `go fix ./...`. If the preview is too broad or contains unwanted changes,
    narrow the analyzer or package scope and preview again instead of applying
    unrelated changes.
-5. Do not raise the `go` version in `go.mod` to unlock fixes. Respect build tags
-   and file-level language versions, and separately check each supported
-   `GOOS`/`GOARCH` when necessary. Change generators rather than generated files.
+5. Preserve the compatibility target declared by the `go` directive in `go.mod`;
+   do not raise it to unlock fixes. Respect build tags and file-level language
+   versions, and separately check each supported `GOOS`/`GOARCH` when necessary.
+   Change generators rather than generated files.
 6. Inspect the resulting Git diff, format changed code, and run `go test ./...`
    plus any relevant behavioral checks. A successful command does not replace
    reviewing external behavior.
