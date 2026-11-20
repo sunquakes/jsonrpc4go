@@ -77,7 +77,7 @@ func (p *Tcp) NewServer() Server {
 func (s *TcpServer) Start() {
 	// Register services
 	if s.Discovery != nil {
-		register := func(key, value interface{}) bool {
+		register := func(key, value any) bool {
 			go s.DiscoveryRegister(key, value)
 			return true
 		}
@@ -102,7 +102,7 @@ func (s *TcpServer) Start() {
  * @param value - The service value
  * @return bool - True if registration succeeded
  */
-func (s *TcpServer) DiscoveryRegister(key, value interface{}) bool {
+func (s *TcpServer) DiscoveryRegister(key, value any) bool {
 	for {
 		if err := s.Discovery.Register(key.(string), "tcp", s.Hostname, s.Port); err == nil {
 			return true

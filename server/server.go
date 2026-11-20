@@ -89,7 +89,7 @@ type Server interface {
 	 * Returns:
 	 *   bool - True if registration was successful, false otherwise
 	 */
-	DiscoveryRegister(key, value interface{}) bool
+	DiscoveryRegister(key, value any) bool
 
 	/*
 	 * GetEvent returns a channel that receives events from the server.

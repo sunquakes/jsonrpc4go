@@ -137,13 +137,13 @@ func RegisterMethod(rm reflect.Method) *Method {
 		return nil
 	}
 	p := rmt.In(1)
-	if p.Kind() != reflect.Ptr {
+	if p.Kind() != reflect.Pointer {
 		msg = fmt.Sprintf("RegisterMethod: Params type of method %q is not a reflect.Ptr:%q", rmn, p)
 		Debug(msg)
 		return nil
 	}
 	r := rmt.In(2)
-	if r.Kind() != reflect.Ptr {
+	if r.Kind() != reflect.Pointer {
 		msg = fmt.Sprintf("RegisterMethod: Result type of method %q is not a reflect.Ptr:%q", rmn, r)
 		Debug(msg)
 		return nil
@@ -155,7 +155,7 @@ func RegisterMethod(rm reflect.Method) *Method {
 		return nil
 	}
 	ret := rmt.Out(0)
-	if ret != reflect.TypeOf((*error)(nil)).Elem() {
+	if ret != reflect.TypeFor[error]() {
 		msg = fmt.Sprintf("RegisterMethod: Return type of method %q is not a must be error:%q", rmn, ret)
 		Debug(msg)
 		return nil
@@ -339,21 +339,21 @@ func lineToHump(in string) string {
  *   string - String with first letter capitalized
  */
 func Capitalize(str string) string {
-	var upperStr string
+	var upperStr strings.Builder
 	vv := []rune(str)
-	for i := 0; i < len(vv); i++ {
+	for i := range vv {
 		if i == 0 {
 			if vv[i] >= 97 && vv[i] <= 122 {
 				vv[i] -= 32
-				upperStr += string(vv[i])
+				upperStr.WriteString(string(vv[i]))
 			} else {
 				return str
 			}
 		} else {
-			upperStr += string(vv[i])
+			upperStr.WriteString(string(vv[i]))
 		}
 	}
-	return upperStr
+	return upperStr.String()
 }
 
 /*

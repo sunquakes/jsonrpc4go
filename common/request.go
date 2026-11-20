@@ -154,7 +154,7 @@ func GetStruct(d any, s any) error {
 		m string
 		t reflect.Type
 	)
-	if s == nil || reflect.TypeOf(s).Kind() != reflect.Ptr {
+	if s == nil || reflect.TypeOf(s).Kind() != reflect.Pointer {
 		m = fmt.Sprintf("reflect: Elem of invalid type %v, need reflect.Ptr", s)
 		Debug(m)
 		return errors.New(m)

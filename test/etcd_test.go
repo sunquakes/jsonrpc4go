@@ -52,11 +52,11 @@ var MockKVServiceDesc = grpc.ServiceDesc{
 	Metadata: "kv.proto",
 }
 
-func _MockMockKVServiceService_Put_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MockMockKVServiceService_Put_Handler(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
 	return &etcdserverpb.PutResponse{}, nil
 }
 
-func _MockMockKVServiceService_Range_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MockMockKVServiceService_Range_Handler(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
 	keyValue := &etcdserverpb.KeyValue{}
 	keyValue.Key = "java_tcp"
 	keyValue.Value = []byte("{\"UniqueId\":\"1692416183\",\"Name\":\"java_tcp\",\"Addr\":\"192.168.1.15:3232\"}")
@@ -88,7 +88,7 @@ var MockLeaseServiceDesc = grpc.ServiceDesc{
 	Metadata: "lease.proto",
 }
 
-func _MockMockLeaseServiceService_LeaseGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _MockMockLeaseServiceService_LeaseGrant_Handler(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
 	return &etcdserverpb.LeaseGrantRequest{}, nil
 }
 
