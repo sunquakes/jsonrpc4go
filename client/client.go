@@ -1,6 +1,7 @@
 package client
 
 import (
+	"iter"
 	"strconv"
 	"sync/atomic"
 )
@@ -100,6 +101,25 @@ type Client interface {
 	 *   error         - Error if the batch operation itself fails
 	 */
 	BatchCall() ([]BatchResult, error)
+}
+
+/*
+ * Streamer defines the optional interface for transports that can push
+ * streaming results value by value.
+ */
+type Streamer interface {
+	/*
+	 * Stream executes a JSON-RPC method call and yields each streamed
+	 * result value as it arrives. Unary results yield exactly one value.
+	 *
+	 * Parameters:
+	 *   method string - JSON-RPC method name
+	 *   args   ...any - Method arguments, sent as a positional array
+	 *
+	 * Returns:
+	 *   iter.Seq2[any, error] - Sequence of streamed values and errors
+	 */
+	Stream(method string, args ...any) iter.Seq2[any, error]
 }
 
 /*

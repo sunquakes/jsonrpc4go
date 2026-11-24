@@ -16,6 +16,19 @@
   one-way notifications.
 - Added the generic helper `jsonrpc4go.Call[T](c, method, args...) (T, error)`
   that decodes the result directly into `T`.
+- Added the `streamable-http` protocol: a single `/mcp` endpoint implementing
+  the MCP Streamable HTTP transport (JSON unary results, SSE streaming
+  results, `Mcp-Session-Id` sessions, `Mcp-Protocol-Version` negotiation,
+  `Last-Event-ID` replay, GET SSE channel, `202` notifications, `Origin`
+  allow-list) plus the MCP layer (`initialize`, `ping`, `tools/list`,
+  `tools/call` with `_meta.progressToken`), exposing registered methods as
+  `Service_Method` tools while keeping legacy `Service/method` dispatch.
+- Added streaming semantics: methods returning slices, arrays, channels or
+  `iter.Seq`/`iter.Seq2` iterators are pushed value by value on streaming
+  transports and collected into arrays on tcp/http.
+- Added `client.Streamer` with `Stream(method string, args ...any)
+  iter.Seq2[any, error]` and the generic helper
+  `jsonrpc4go.Stream[T](c, method, args...) iter.Seq2[T, error]`.
 
 ## [v1.7.1] - 2026-11-16
 

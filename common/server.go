@@ -234,35 +234,58 @@ func (svr *Server) Handler(b []byte) []byte {
  *   any - JSON-RPC response object
  */
 func (svr *Server) SingleHandler(jsonMap map[string]any) any {
+	resp, _ := svr.HandleRequest(jsonMap, nil)
+	return resp
+}
+
+/*
+ * HandleRequest handles a single JSON-RPC request with optional streaming.
+ *
+ * When stream is non-nil and the method result is a stream type (channel,
+ * slice, array or iterator), each value is pushed through the handler and
+ * the returned response is the final message sent after the stream ends.
+ * When stream is nil, stream results are collected into a slice so that
+ * non-streaming transports keep a unary response.
+ *
+ * Parameters:
+ *   jsonMap map[string]any - Parsed JSON-RPC request
+ *   stream  *StreamHandler - Streaming handler, nil for unary dispatch
+ *
+ * Returns:
+ *   any  - JSON-RPC response object; nil when the stream was aborted
+ *   bool - Whether values were pushed through the stream handler; when
+ *          false the response is a complete unary payload
+ */
+func (svr *Server) HandleRequest(jsonMap map[string]any, stream *StreamHandler) (any, bool) {
 	id, jsonRpc, method, paramsData, errCode := ParseSingleRequestBody(jsonMap)
 	if errCode != WithoutError {
-		return E(id, jsonRpc, errCode)
+		return E(id, jsonRpc, errCode), false
 	}
 
 	if svr.RateLimiter != nil && !svr.RateLimiter.Allow() {
-		return CE(id, jsonRpc, "Too many requests")
+		return CE(id, jsonRpc, "Too many requests"), false
 	}
 
 	sName, mName, err := ParseRequestMethod(method)
 	if err != nil {
-		return E(id, jsonRpc, MethodNotFound)
+		return E(id, jsonRpc, MethodNotFound), false
 	}
 	s, ok := svr.Sm.Load(sName)
 	if !ok {
-		sName = lineToHump(sName) // support HelloWorld and hello_world
+		sName = LineToHump(sName) // support HelloWorld and hello_world
 		s, ok = svr.Sm.Load(sName)
 		if !ok {
-			return E(id, jsonRpc, MethodNotFound)
+			return E(id, jsonRpc, MethodNotFound), false
 		}
 	}
 	m, ok := s.(*Service).Mm[mName]
 	if !ok {
-		return E(id, jsonRpc, MethodNotFound)
+		return E(id, jsonRpc, MethodNotFound), false
 	}
 	args, err := DecodeArgs(paramsData, m.ParamsTypes)
 	if err != nil {
 		Debug(err)
-		return E(id, jsonRpc, InvalidParams)
+		return E(id, jsonRpc, InvalidParams), false
 	}
 	hookParams := make([]any, len(args))
 	for k, v := range args {
@@ -272,7 +295,7 @@ func (svr *Server) SingleHandler(jsonMap map[string]any) any {
 	// before
 	err = svr.Before(id, mName, hookParams)
 	if err != nil {
-		return CE(id, jsonRpc, err.Error())
+		return CE(id, jsonRpc, err.Error()), false
 	}
 
 	in := make([]reflect.Value, 0, len(args)+1)
@@ -282,21 +305,46 @@ func (svr *Server) SingleHandler(jsonMap map[string]any) any {
 	if m.HasError {
 		if e := r[len(r)-1]; !e.IsNil() {
 			Debug(e.Interface())
-			return E(id, jsonRpc, InternalError)
+			return E(id, jsonRpc, InternalError), false
 		}
 		r = r[:len(r)-1]
 	}
+
+	streamed := m.ResultType != nil && len(r) > 0 && IsStreamType(m.ResultType)
 	var result any
-	if m.ResultType != nil && len(r) > 0 {
+	// pushed reports whether values were emitted through the stream handler,
+	// so the transport must deliver the final response over the same channel.
+	pushed := false
+	if streamed {
+		if stream != nil {
+			pushed = true
+			if stream.Begin != nil {
+				stream.Begin()
+			}
+			if err := EmitStream(r[0], stream.OnValue); err != nil {
+				Debug(err)
+				return E(id, jsonRpc, InternalError), pushed
+			}
+			result = nil
+		} else {
+			values, err := CollectStream(r[0])
+			if err != nil {
+				Debug(err)
+				return E(id, jsonRpc, InternalError), false
+			}
+			result = values
+		}
+	} else if m.ResultType != nil && len(r) > 0 {
 		result = r[0].Interface()
 	}
+
 	// after
 	err = svr.After(id, mName, result)
 	if err != nil {
-		return CE(id, jsonRpc, err.Error())
+		return CE(id, jsonRpc, err.Error()), pushed
 	}
 
-	return S(id, jsonRpc, result)
+	return S(id, jsonRpc, result), pushed
 }
 
 /*
@@ -342,7 +390,7 @@ func (svr *Server) After(id any, method string, result any) error {
 }
 
 /*
- * lineToHump converts a snake_case string to camelCase.
+ * LineToHump converts a snake_case string to camelCase.
  *
  * Parameters:
  *   in string - Input snake_case string
@@ -350,7 +398,7 @@ func (svr *Server) After(id any, method string, result any) error {
  * Returns:
  *   string - camelCase string
  */
-func lineToHump(in string) string {
+func LineToHump(in string) string {
 	s := strings.Split(in, "_")
 	for k, v := range s {
 		s[k] = Capitalize(v)

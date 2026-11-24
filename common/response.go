@@ -135,6 +135,16 @@ func jsonE(id any, jsonRpc string, errCode int) []byte {
 }
 
 /**
+ * @Description: Create a JSON error response envelope for HTTP transports
+ * @Param id: Request ID
+ * @Param errCode: Error code
+ * @Return []byte: JSON error response data
+ */
+func JsonErrorEnvelope(id any, errCode int) []byte {
+	return jsonE(id, JsonRpc, errCode)
+}
+
+/**
  * @Description: Batch item result structure
  * @Field Result: Result value decoded from the response
  * @Field Err: Error decoded from the response
