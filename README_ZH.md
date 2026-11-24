@@ -26,6 +26,8 @@ s.Start()
 go get -u github.com/sunquakes/jsonrpc4go
 ```
 ## 📖 开始使用
+服务端方法直接接收值参数并返回结果（可选地在其后返回一个 `error`）。参数以位置数组的形式传输（`"params":[1,6]`）。
+
 - 服务端代码
 ```go
 package main
@@ -36,14 +38,8 @@ import (
 
 type IntRpc struct{}
 
-type Params struct {
-	A int `json:"a"`
-	B int `json:"b"`
-}
-
-func (i *IntRpc) Add(params *Params, result *int) error {
-	*result = params.A + params.B
-	return nil
+func (i *IntRpc) Add(a, b int) int {
+	return a + b
 }
 
 func main() {
@@ -61,23 +57,13 @@ import (
 	"github.com/sunquakes/jsonrpc4go"
 )
 
-type Params struct {
-	A int `json:"a"`
-	B int `json:"b"`
-}
-
-type Result2 struct {
-	C int `json:"c"`
-}
-
 func main() {
-	result := new(int)
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232") // http协议
-	err := c.Call("Add", Params{1, 6}, result, false)
-	// 发送的数据格式: {"id":"1604283212", "jsonrpc":"2.0", "method":"IntRpc/Add", "params":{"a":1,"b":6}}
-	// 接收的数据格式: {"id":"1604283212", "jsonrpc":"2.0", "result":7}
+	result, err := jsonrpc4go.Call[int](c, "Add", 1, 6)
+	// 发送的数据格式: {"id":"1","jsonrpc":"2.0","method":"IntRpc/Add","params":[1,6]}
+	// 接收的数据格式: {"id":"1","jsonrpc":"2.0","result":7}
 	fmt.Println(err) // nil
-	fmt.Println(*result) // 7
+	fmt.Println(result) // 7
 }
 ```
 ## ⚔️ 测试
@@ -94,12 +80,14 @@ c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232") // tcp协议
 - 钩子 (在代码's.Start()'前添加下面的代码)
 ```go
 // 在方法前执行的钩子方法
+// params 为解码后的位置参数列表 []any，例：[]any{1, 6}
 s.SetBeforeFunc(func(id interface{}, method string, params interface{}) error {
     // 如果方法返回error类型，服务端停止执行并返回错误信息到客户端
     // 例：return errors.New("Custom Error")
     return nil
 })
 // 在方法后执行的钩子方法
+// result 为方法直接返回的值，例：7
 s.SetAfterFunc(func(id interface{}, method string, result interface{}) error {
     // 如果方法返回error类型，服务端停止执行并返回错误信息到客户端
     // 例：return errors.New("Custom Error")
@@ -119,28 +107,22 @@ c.SetOptions(client.TcpOptions{"aaaaaa", nil}) // 仅tcp协议生效
 ```
 - 通知请求
 ```go
-// 通知
-result2 := new(Result2)
-err2 := c.Call("Add2", Params{1, 6}, result2, true)
-// 发送的数据格式: {"jsonrpc":"2.0","method":"IntRpc/Add2","params":{"a":1,"b":6}}
-// 接收的数据格式: {"jsonrpc":"2.0","result":{"c":7}}
-fmt.Println(err2) // nil
-fmt.Println(*result2) // {7}
+// 通知：不返回结果，只返回错误
+err := c.Notify("Add2", 1, 6)
+// 发送的数据格式: {"jsonrpc":"2.0","method":"IntRpc/Add2","params":[1,6]}
+fmt.Println(err) // nil
 ```
 - 批量请求
 ```go
 // 批量请求
-result3 := new(int)
-err3 := c.BatchAppend("Add1", Params{1, 6}, result3, false)
-result4 := new(int)
-err4 := c.BatchAppend("Add", Params{2, 3}, result4, false)
-c.BatchCall()
-// 发送的数据格式: [{"id":"1604283212","jsonrpc":"2.0","method":"IntRpc/Add1","params":{"a":1,"b":6}},{"id":"1604283212","jsonrpc":"2.0","method":"IntRpc/Add","params":{"a":2,"b":3}}]
-// 接收的数据格式: [{"id":"1604283212","jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found","data":null}},{"id":"1604283212","jsonrpc":"2.0","result":5}]
-fmt.Println((*err3).Error()) // Method not found
-fmt.Println(*result3) // 0
-fmt.Println(*err4) // nil
-fmt.Println(*result4) // 5
+c.BatchAppend("Add1", 1, 6)
+c.BatchAppend("Add", 2, 3)
+results, err := c.BatchCall()
+// 发送的数据格式: [{"id":"1","jsonrpc":"2.0","method":"IntRpc/Add1","params":[1,6]},{"id":"2","jsonrpc":"2.0","method":"IntRpc/Add","params":[2,3]}]
+// 接收的数据格式: [{"id":"1","jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found","data":null}},{"id":"2","jsonrpc":"2.0","result":5}]
+fmt.Println(err) // <nil>
+fmt.Println(results[0].Err) // Method not found
+fmt.Println(results[1].Result) // 5
 ```
 - 用户端负载均衡
 ```go

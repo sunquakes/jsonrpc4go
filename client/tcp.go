@@ -92,50 +92,50 @@ func NewTcpClient(name string, protocol string, address string, dc discovery.Dri
  * @Description: Batch add requests
  * @Receiver c: TcpClient structure pointer
  * @Param method: Method name
- * @Param params: Parameters
- * @Param result: Result
- * @Param isNotify: Whether it's a notification
- * @Return *error: Error pointer
+ * @Param args: Positional method arguments
  */
-func (c *TcpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
+func (c *TcpClient) BatchAppend(method string, args ...any) {
 	singleRequest := &common.SingleRequest{
-		Method:   method,
-		Params:   params,
-		Result:   result,
-		Error:    new(error),
-		IsNotify: isNotify,
+		Method: method,
+		Args:   args,
 	}
 	c.RequestList = append(c.RequestList, singleRequest)
-	return singleRequest.Error
 }
 
 /**
  * @Description: Execute batch requests
  * @Receiver c: TcpClient structure pointer
+ * @Return []BatchResult: Per-request results
  * @Return error: Error message
  */
-func (c *TcpClient) BatchCall() error {
+func (c *TcpClient) BatchCall() ([]BatchResult, error) {
 	var (
 		err error
 		br  []any
 	)
+	if len(c.RequestList) == 0 {
+		return nil, nil
+	}
 	for _, v := range c.RequestList {
-		var (
-			req any
-		)
 		method := fmt.Sprintf("%s/%s", c.Name, v.Method)
-		if v.IsNotify {
-			req = common.Rs(nil, method, v.Params)
-		} else {
-			req = common.Rs(nextRequestID(), method, v.Params)
-		}
-		br = append(br, req)
+		br = append(br, common.Rs(nextRequestID(), method, normalizeArgs(v.Args)))
 	}
 	bReq := common.JsonBatchRs(br)
 	bReq = append(bReq, []byte(c.Options.PackageEof)...)
-	err = c.handleFunc(bReq, c.RequestList)
+	data, err := c.handleFunc(bReq)
 	c.RequestList = make([]*common.SingleRequest, 0)
-	return err
+	if err != nil {
+		return nil, err
+	}
+	items, err := common.GetBatchResult(data)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]BatchResult, len(items))
+	for k, v := range items {
+		results[k] = BatchResult{Result: v.Result, Err: v.Err}
+	}
+	return results, nil
 }
 
 /**
@@ -160,24 +160,38 @@ func (c *TcpClient) SetPoolOptions(poolOption any) {
  * @Description: Execute a single request
  * @Receiver c: TcpClient structure pointer
  * @Param method: Method name
- * @Param params: Parameters
- * @Param result: Result
- * @Param isNotify: Whether it's a notification
+ * @Param args: Positional method arguments
+ * @Return any: Result value
  * @Return error: Error message
  */
-func (c *TcpClient) Call(method string, params any, result any, isNotify bool) error {
-	var (
-		err error
-		req []byte
-	)
-	method = fmt.Sprintf("%s/%s", c.Name, method)
-	if isNotify {
-		req = common.JsonRs(nil, method, params)
-	} else {
-		req = common.JsonRs(nextRequestID(), method, params)
-	}
+func (c *TcpClient) Call(method string, args ...any) (any, error) {
+	fullMethod := fmt.Sprintf("%s/%s", c.Name, method)
+	req := common.JsonRs(nextRequestID(), fullMethod, normalizeArgs(args))
 	req = append(req, []byte(c.Options.PackageEof)...)
-	err = c.handleFunc(req, result)
+	data, err := c.handleFunc(req)
+	if err != nil {
+		return nil, err
+	}
+	return common.GetResult(data)
+}
+
+/**
+ * @Description: Execute a notification request
+ * @Receiver c: TcpClient structure pointer
+ * @Param method: Method name
+ * @Param args: Positional method arguments
+ * @Return error: Error message
+ */
+func (c *TcpClient) Notify(method string, args ...any) error {
+	fullMethod := fmt.Sprintf("%s/%s", c.Name, method)
+	req := common.JsonRs(nil, fullMethod, normalizeArgs(args))
+	req = append(req, []byte(c.Options.PackageEof)...)
+	data, err := c.handleFunc(req)
+	if err != nil {
+		return err
+	}
+	// Drain the response so the pooled connection stays in sync.
+	_, err = common.GetResult(data)
 	return err
 }
 
@@ -185,13 +199,13 @@ func (c *TcpClient) Call(method string, params any, result any, isNotify bool) e
  * @Description: Handle request and response
  * @Receiver c: TcpClient structure pointer
  * @Param b: Request data
- * @Param result: Result
+ * @Return []byte: Response data
  * @Return error: Error message
  */
-func (c *TcpClient) handleFunc(b []byte, result any) (err error) {
+func (c *TcpClient) handleFunc(b []byte) (data []byte, err error) {
 	conn, err := c.Pool.Borrow()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Return broken connections to the pool by removing them instead of reusing.
 	defer func() {
@@ -206,26 +220,26 @@ func (c *TcpClient) handleFunc(b []byte, result any) (err error) {
 		// The connection may be stale; replace it and retry once.
 		conn, err = c.Pool.BorrowAfterRemove(conn)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if _, err = conn.Write(b); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return readPackage(conn, c.Options, result)
+	return readPackage(conn, c.Options)
 }
 
 /*
  * readPackage reads a single delimited response packet from conn.
  * @param conn - The TCP connection
  * @param options - The TCP client options
- * @param result - The result of the request
- * @return error - An error if the request failed
+ * @return []byte - The response packet without the delimiter
+ * @return error - An error if the read failed
  */
-func readPackage(conn net.Conn, options TcpOptions, result any) error {
+func readPackage(conn net.Conn, options TcpOptions) ([]byte, error) {
 	eofb := []byte(options.PackageEof)
 	if len(eofb) == 0 {
-		return errors.New("package eof is empty")
+		return nil, errors.New("package eof is empty")
 	}
 	maxLength := options.PackageMaxLength
 	if maxLength <= 0 {
@@ -239,14 +253,14 @@ func readPackage(conn net.Conn, options TcpOptions, result any) error {
 		if n > 0 {
 			data = append(data, buf[:n]...)
 			if len(data) >= len(eofb) && bytes.HasSuffix(data, eofb) {
-				return common.GetResult(data[:len(data)-len(eofb)], result)
+				return data[:len(data)-len(eofb)], nil
 			}
 			if int64(len(data)) > maxLength {
-				return errors.New("package exceeds max length")
+				return nil, errors.New("package exceeds max length")
 			}
 		}
 		if readErr != nil {
-			return readErr
+			return nil, readErr
 		}
 	}
 }

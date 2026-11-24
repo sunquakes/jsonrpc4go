@@ -135,78 +135,82 @@ func jsonE(id any, jsonRpc string, errCode int) []byte {
 }
 
 /**
+ * @Description: Batch item result structure
+ * @Field Result: Result value decoded from the response
+ * @Field Err: Error decoded from the response
+ */
+type ItemResult struct {
+	Result any
+	Err    error
+}
+
+/**
  * @Description: Get single response
  * @Param jsonData: JSON data
- * @Param result: Result
+ * @Return any: Result value
  * @Return error: Error information
  */
-func GetSingleResponse(jsonData map[string]any, result any) error {
-	var (
-		err error
-	)
+func GetSingleResponse(jsonData map[string]any) (any, error) {
 	emData, ok := jsonData["error"]
 	if ok && emData != nil {
 		resErr := new(Error)
 		if err := GetStruct(emData, resErr); err != nil {
-			return err
+			return nil, err
 		}
 		Debug(resErr.Message)
-		return errors.New(resErr.Message)
+		return nil, errors.New(resErr.Message)
 	}
-	// Notifications have no result to decode.
-	if result == nil {
-		return nil
-	}
-	jsonStr, err := json.Marshal(jsonData["result"])
-	if err != nil {
-		Debug(err)
-		return err
-	}
-	err = json.Unmarshal(jsonStr, result)
-	if err != nil {
-		Debug(err)
-		return err
-	}
-	return err
+	return jsonData["result"], nil
 }
 
 /**
  * @Description: Get result
  * @Param b: Response data
- * @Param result: Result
+ * @Return any: Result value
  * @Return error: Error information
  */
-func GetResult(b []byte, result any) error {
+func GetResult(b []byte) (any, error) {
 	var jsonData any
 	if err := json.Unmarshal(b, &jsonData); err != nil {
 		Debug(err)
-		return err
+		return nil, err
 	}
 	switch data := jsonData.(type) {
 	case map[string]any:
-		return GetSingleResponse(data, result)
+		return GetSingleResponse(data)
 	case []any:
-		results, ok := result.([]*SingleRequest)
-		if !ok {
-			return errors.New("json: batch result must be a []*SingleRequest")
-		}
-		if len(results) != len(data) {
-			return errors.New("json: batch response length does not match request length")
-		}
-		for k, v := range data {
-			m, ok := v.(map[string]any)
-			if !ok {
-				continue
-			}
-			if err := GetSingleResponse(m, results[k].Result); err != nil {
-				if results[k].Error != nil {
-					*results[k].Error = err
-				}
-			}
-		}
-		return nil
+		return nil, errors.New("json: unexpected batch response")
 	}
-	return nil
+	return nil, errors.New("json: invalid response")
+}
+
+/**
+ * @Description: Get batch results
+ * @Param b: Batch response data
+ * @Return []ItemResult: Per-item results in request order
+ * @Return error: Error information
+ */
+func GetBatchResult(b []byte) ([]ItemResult, error) {
+	var jsonData any
+	if err := json.Unmarshal(b, &jsonData); err != nil {
+		Debug(err)
+		return nil, err
+	}
+	data, ok := jsonData.([]any)
+	if !ok {
+		return nil, errors.New("json: batch response must be an array")
+	}
+	results := make([]ItemResult, 0, len(data))
+	for _, v := range data {
+		m, ok := v.(map[string]any)
+		if !ok {
+			results = append(results, ItemResult{Err: errors.New("json: invalid batch response item")})
+			continue
+		}
+		result, err := GetSingleResponse(m)
+		results = append(results, ItemResult{Result: result, Err: err})
+	}
+	return results, nil
 }
 
 /**

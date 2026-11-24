@@ -4,23 +4,16 @@ import "github.com/sunquakes/jsonrpc4go"
 
 type IntRpc struct{}
 
-type Params struct {
-	A int `json:"a"`
-	B int `json:"b"`
-}
-
 type Result struct {
 	C int `json:"c"`
 }
 
-func (i *IntRpc) Add(params *Params, result *int) error {
-	*result = params.A + params.B
-	return nil
+func (i *IntRpc) Add(a, b int) int {
+	return a + b
 }
 
-func (i *IntRpc) Add2(params *Params, result *Result) error {
-	result.C = params.A + params.B
-	return nil
+func (i *IntRpc) Add2(a, b int) Result {
+	return Result{C: a + b}
 }
 
 func main() {
