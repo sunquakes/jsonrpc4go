@@ -1,5 +1,18 @@
 # AGENTS
 
+## README Synchronization
+
+After modifying or adding any function, update the README in the same change.
+
+1. Update both `README.md` and `README_ZH.md` so the English and Chinese
+   versions stay in sync.
+2. Keep every affected section current: API usage examples (server and
+   client), code snippets, and comments that describe the changed behavior.
+3. If an example under `examples/` demonstrates a changed or added function,
+   update the example and mirror it in the README so the two never diverge.
+4. If the change alters the exported API surface, note it in
+   `CHANGELOG.md` under `## [Unreleased]` as part of the same edit.
+
 ## Go 1.26 Modernization
 
 After adding a Go function, run `go version`. If the active toolchain is Go 1.26
