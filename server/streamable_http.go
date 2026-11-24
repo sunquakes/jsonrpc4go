@@ -493,7 +493,7 @@ func (s *StreamableHttpServer) handleBatch(w http.ResponseWriter, sess *mcpSessi
 	if len(list) == 0 {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write(common.JsonErrorEnvelope(nil, common.InvalidRequest))
+		_, _ = w.Write(common.JsonErrorEnvelope(nil, common.InvalidRequest))
 		return
 	}
 	responses := make([]any, 0, len(list))
