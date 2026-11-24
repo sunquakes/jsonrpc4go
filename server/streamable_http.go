@@ -664,7 +664,7 @@ func bindParams(types []reflect.Type) []argBinding {
 		if t.Kind() == reflect.Struct {
 			var fields []string
 			for f := range t.NumField() {
-				if t.Field(f).IsExported() {
+				if t.Field(f).IsExported() && !jsonSkipped(t.Field(f)) {
 					fields = append(fields, jsonFieldName(t.Field(f)))
 				}
 			}
@@ -674,6 +674,13 @@ func bindParams(types []reflect.Type) []argBinding {
 		}
 	}
 	return binds
+}
+
+// jsonSkipped reports whether a struct field is never decoded from JSON
+// because it carries the `json:"-"` tag.
+func jsonSkipped(f reflect.StructField) bool {
+	name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
+	return name == "-"
 }
 
 func jsonFieldName(f reflect.StructField) string {
@@ -692,7 +699,7 @@ func inputSchema(types []reflect.Type) map[string]any {
 	for k, t := range types {
 		if t.Kind() == reflect.Struct {
 			for f := range t.NumField() {
-				if !t.Field(f).IsExported() {
+				if !t.Field(f).IsExported() || jsonSkipped(t.Field(f)) {
 					continue
 				}
 				name := jsonFieldName(t.Field(f))
