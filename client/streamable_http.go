@@ -201,7 +201,7 @@ func (c *StreamableHttpClient) ensureSession() error {
 		return err
 	}
 	defer resp.Body.Close()
-	io.Copy(io.Discard, resp.Body)
+	_, _ = io.Copy(io.Discard, resp.Body)
 	sid := resp.Header.Get(mcpSessionHeaderName)
 	if sid == "" {
 		return errors.New("streamable-http: server did not create a session")

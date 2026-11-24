@@ -332,7 +332,7 @@ func (s *StreamableHttpServer) resolveSession(w http.ResponseWriter, r *http.Req
 	v, ok := s.Sessions.Load(sid)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write(common.JsonErrorEnvelope(nil, common.InvalidRequest))
+		_, _ = w.Write(common.JsonErrorEnvelope(nil, common.InvalidRequest))
 		return nil, false
 	}
 	return v.(*mcpSession), true
@@ -351,7 +351,7 @@ func (s *StreamableHttpServer) handlePost(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write(common.JsonErrorEnvelope(nil, common.ParseError))
+		_, _ = w.Write(common.JsonErrorEnvelope(nil, common.ParseError))
 		return
 	}
 	switch req := parsed.(type) {
@@ -370,7 +370,7 @@ func (s *StreamableHttpServer) handlePost(w http.ResponseWriter, r *http.Request
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write(common.JsonErrorEnvelope(nil, common.InvalidRequest))
+		_, _ = w.Write(common.JsonErrorEnvelope(nil, common.InvalidRequest))
 	}
 }
 
@@ -618,7 +618,9 @@ func (e *sseWriter) writeJSON(resp any) {
 	if err != nil {
 		return
 	}
-	e.event(data)
+	if err := e.event(data); err != nil {
+		log.Printf("write SSE event failed: %v", err)
+	}
 }
 
 /*
