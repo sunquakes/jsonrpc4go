@@ -109,7 +109,7 @@ func (s *HttpServer) Start() {
 	}
 	// Register services
 	if s.Discovery != nil {
-		register := func(key, value interface{}) bool {
+		register := func(key, value any) bool {
 			go s.DiscoveryRegister(key, value)
 			return true
 		}
@@ -141,7 +141,7 @@ func (s *HttpServer) Start() {
  * @param value - The service value
  * @return bool - True if registration succeeded
  */
-func (s *HttpServer) DiscoveryRegister(key, value interface{}) bool {
+func (s *HttpServer) DiscoveryRegister(key, value any) bool {
 	for {
 		if err := s.Discovery.Register(key.(string), "http", s.Hostname, s.Port); err == nil {
 			return true

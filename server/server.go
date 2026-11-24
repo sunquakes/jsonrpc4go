@@ -83,13 +83,13 @@ type Server interface {
 	 * DiscoveryRegister registers the server with the discovery service.
 	 *
 	 * Parameters:
-	 *   key   interface{} - Registration key
-	 *   value interface{} - Registration value
+	 *   key   any - Registration key
+	 *   value any - Registration value
 	 *
 	 * Returns:
 	 *   bool - True if registration was successful, false otherwise
 	 */
-	DiscoveryRegister(key, value interface{}) bool
+	DiscoveryRegister(key, value any) bool
 
 	/*
 	 * GetEvent returns a channel that receives events from the server.

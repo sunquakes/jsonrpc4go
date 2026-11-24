@@ -164,95 +164,105 @@ func (c *HttpClient) SetPoolOptions(httpOptions any) {
 /*
  * BatchAppend appends a request to the batch
  * @param method - The method to call
- * @param params - The parameters for the method
- * @param result - The result of the method
- * @param isNotify - Whether the request is a notification
- * @return *error - A pointer to the error
+ * @param args - The positional arguments for the method
  */
-func (c *HttpClient) BatchAppend(method string, params any, result any, isNotify bool) *error {
+func (c *HttpClient) BatchAppend(method string, args ...any) {
 	singleRequest := &common.SingleRequest{
-		Method:   method,
-		Params:   params,
-		Result:   result,
-		Error:    new(error),
-		IsNotify: isNotify,
+		Method: method,
+		Args:   args,
 	}
 	c.RequestList = append(c.RequestList, singleRequest)
-	return singleRequest.Error
 }
 
 /*
  * BatchCall executes all requests in the batch
+ * @return []BatchResult - Per-request results in the order they were appended
  * @return error - An error if the batch call failed
  */
-func (c *HttpClient) BatchCall() error {
+func (c *HttpClient) BatchCall() ([]BatchResult, error) {
 	var (
-		err error
-		br  []any
+		br []any
 	)
+	if len(c.RequestList) == 0 {
+		return nil, nil
+	}
 	for _, v := range c.RequestList {
-		var (
-			req any
-		)
 		method := fmt.Sprintf("%s/%s", c.Name, v.Method)
-		if v.IsNotify {
-			req = common.Rs(nil, method, v.Params)
-		} else {
-			req = common.Rs(nextRequestID(), method, v.Params)
-		}
-		br = append(br, req)
+		br = append(br, common.Rs(nextRequestID(), method, normalizeArgs(v.Args)))
 	}
 	bReq := common.JsonBatchRs(br)
-	err = c.handleFunc(bReq, c.RequestList)
+	data, err := c.handleFunc(bReq)
 	c.RequestList = make([]*common.SingleRequest, 0)
-	return err
+	if err != nil {
+		return nil, err
+	}
+	items, err := common.GetBatchResult(data)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]BatchResult, len(items))
+	for k, v := range items {
+		results[k] = BatchResult{Result: v.Result, Err: v.Err}
+	}
+	return results, nil
 }
 
 /*
  * Call executes a single request
  * @param method - The method to call
- * @param params - The parameters for the method
- * @param result - The result of the method
- * @param isNotify - Whether the request is a notification
+ * @param args - The positional arguments for the method
+ * @return any - The decoded result value
  * @return error - An error if the call failed
  */
-func (c *HttpClient) Call(method string, params any, result any, isNotify bool) error {
-	var (
-		err error
-		req []byte
-	)
-	method = fmt.Sprintf("%s/%s", c.Name, method)
-	if isNotify {
-		req = common.JsonRs(nil, method, params)
-	} else {
-		req = common.JsonRs(nextRequestID(), method, params)
+func (c *HttpClient) Call(method string, args ...any) (any, error) {
+	fullMethod := fmt.Sprintf("%s/%s", c.Name, method)
+	req := common.JsonRs(nextRequestID(), fullMethod, normalizeArgs(args))
+	data, err := c.handleFunc(req)
+	if err != nil {
+		return nil, err
 	}
-	err = c.handleFunc(req, result)
+	return common.GetResult(data)
+}
+
+/*
+ * Notify executes a notification request
+ * @param method - The method to call
+ * @param args - The positional arguments for the method
+ * @return error - An error if the notification failed
+ */
+func (c *HttpClient) Notify(method string, args ...any) error {
+	fullMethod := fmt.Sprintf("%s/%s", c.Name, method)
+	req := common.JsonRs(nil, fullMethod, normalizeArgs(args))
+	data, err := c.handleFunc(req)
+	if err != nil {
+		return err
+	}
+	_, err = common.GetResult(data)
 	return err
 }
 
 /*
  * handleFunc handles the HTTP request
  * @param b - The request body
- * @param result - The result of the request
+ * @return []byte - The response body
  * @return error - An error if the request failed
  */
-func (c *HttpClient) handleFunc(b []byte, result any) error {
+func (c *HttpClient) handleFunc(b []byte) ([]byte, error) {
 	address, err := c.GetAddress()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	url := fmt.Sprintf("%s://%s", c.Protocol, address)
 	resp, err := c.httpClient().Post(url, "application/json", bytes.NewReader(b))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return common.GetResult(body, result)
+	return body, nil
 }
 
 /*

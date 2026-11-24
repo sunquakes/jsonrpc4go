@@ -22,17 +22,11 @@ var RequiredFields = map[string]string{
 /**
  * @Description: Single request structure
  * @Field Method: Method name
- * @Field Params: Parameters
- * @Field Result: Result
- * @Field Error: Error pointer
- * @Field IsNotify: Whether it is a notification
+ * @Field Args: Positional method arguments
  */
 type SingleRequest struct {
-	Method   string
-	Params   any
-	Result   any
-	Error    *error
-	IsNotify bool
+	Method string
+	Args   []any
 }
 
 /**
@@ -154,7 +148,7 @@ func GetStruct(d any, s any) error {
 		m string
 		t reflect.Type
 	)
-	if s == nil || reflect.TypeOf(s).Kind() != reflect.Ptr {
+	if s == nil || reflect.TypeOf(s).Kind() != reflect.Pointer {
 		m = fmt.Sprintf("reflect: Elem of invalid type %v, need reflect.Ptr", s)
 		Debug(m)
 		return errors.New(m)
@@ -204,6 +198,44 @@ func GetStruct(d any, s any) error {
 		return err
 	}
 	return nil
+}
+
+/**
+ * @Description: Decode positional arguments
+ * @Param paramsData: Parsed JSON-RPC params value
+ * @Param types: Method argument types
+ * @Return []reflect.Value: Typed argument values
+ * @Return error: Error message
+ */
+func DecodeArgs(paramsData any, types []reflect.Type) ([]reflect.Value, error) {
+	args := make([]reflect.Value, 0, len(types))
+	if len(types) == 0 {
+		return args, nil
+	}
+	if paramsData == nil {
+		return nil, errors.New("json: missing params")
+	}
+	list, ok := paramsData.([]any)
+	if !ok {
+		return nil, errors.New("json: params must be a positional array")
+	}
+	if len(list) != len(types) {
+		return nil, fmt.Errorf("json: The number of parameters does not match: expected %d, got %d", len(types), len(list))
+	}
+	for k, t := range types {
+		v := reflect.New(t)
+		jsonStr, err := json.Marshal(list[k])
+		if err != nil {
+			Debug(err)
+			return nil, err
+		}
+		if err := json.Unmarshal(jsonStr, v.Interface()); err != nil {
+			Debug(err)
+			return nil, err
+		}
+		args = append(args, v.Elem())
+	}
+	return args, nil
 }
 
 /**

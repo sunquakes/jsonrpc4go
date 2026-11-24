@@ -18,16 +18,18 @@ import (
  * Method represents a JSON-RPC method definition.
  *
  * Fields:
- *   Name       string        - Method name
- *   ParamsType reflect.Type  - Type of the method parameters
- *   ResultType reflect.Type  - Type of the method result
- *   Method     reflect.Method - Reflect method object
+ *   Name        string          - Method name
+ *   ParamsTypes []reflect.Type  - Types of the method arguments (without the receiver)
+ *   ResultType  reflect.Type    - Type of the method result; nil when the method returns no result
+ *   HasError    bool            - Whether the method returns an error as its last output
+ *   Method      reflect.Method  - Reflect method object
  */
 type Method struct {
-	Name       string
-	ParamsType reflect.Type
-	ResultType reflect.Type
-	Method     reflect.Method
+	Name        string
+	ParamsTypes []reflect.Type
+	ResultType  reflect.Type
+	HasError    bool
+	Method      reflect.Method
 }
 
 /*
@@ -64,8 +66,8 @@ type Server struct {
  * Hooks contains callback functions that are executed before and after method calls.
  *
  * Fields:
- *   BeforeFunc func(id any, method string, params any) error - Function called before processing a request
- *   AfterFunc  func(id any, method string, result any) error - Function called after processing a request
+ *   BeforeFunc func(id any, method string, params any) error - Function called before processing a request; params is a []any of the decoded positional arguments
+ *   AfterFunc  func(id any, method string, result any) error - Function called after processing a request; result is the method's returned value
  *   StartFunc  func() - Function called after server starts
  */
 type Hooks struct {
@@ -117,7 +119,12 @@ func RegisterMethods(s reflect.Type) map[string]*Method {
 }
 
 /*
- * RegisterMethod registers a single method if it conforms to the JSON-RPC method signature.
+ * RegisterMethod registers a single method if it conforms to the JSON-RPC
+ * method signature.
+ *
+ * Accepted signatures: the receiver plus any number of non-pointer value
+ * arguments, returning an optional result and an optional trailing error,
+ * e.g. func (i *IntRpc) Add(a, b int) int or func (i *IntRpc) Add(a, b int) (int, error).
  *
  * Parameters:
  *   rm reflect.Method - Reflect method to register
@@ -131,36 +138,47 @@ func RegisterMethod(rm reflect.Method) *Method {
 	)
 	rmt := rm.Type
 	rmn := rm.Name
-	if rm.Type.NumIn() != 3 {
-		msg = fmt.Sprintf("RegisterMethod: method %q has %d input parameters; needs exactly three", rmn, rmt.NumIn())
+	if rmt.IsVariadic() {
+		msg = fmt.Sprintf("RegisterMethod: method %q is variadic; variadic methods are not supported", rmn)
 		Debug(msg)
 		return nil
 	}
-	p := rmt.In(1)
-	if p.Kind() != reflect.Ptr {
-		msg = fmt.Sprintf("RegisterMethod: Params type of method %q is not a reflect.Ptr:%q", rmn, p)
+	paramsTypes := make([]reflect.Type, 0, rmt.NumIn()-1)
+	for k := 1; k < rmt.NumIn(); k++ {
+		p := rmt.In(k)
+		if p.Kind() == reflect.Pointer {
+			msg = fmt.Sprintf("RegisterMethod: Params type of method %q is a reflect.Ptr:%q; method arguments must be value types", rmn, p)
+			Debug(msg)
+			return nil
+		}
+		paramsTypes = append(paramsTypes, p)
+	}
+	var (
+		resultType reflect.Type
+		hasError   bool
+	)
+	switch rmt.NumOut() {
+	case 0:
+	case 1:
+		if rmt.Out(0) == reflect.TypeFor[error]() {
+			hasError = true
+		} else {
+			resultType = rmt.Out(0)
+		}
+	case 2:
+		if rmt.Out(1) != reflect.TypeFor[error]() {
+			msg = fmt.Sprintf("RegisterMethod: Second return value of method %q is not an error:%q", rmn, rmt.Out(1))
+			Debug(msg)
+			return nil
+		}
+		resultType = rmt.Out(0)
+		hasError = true
+	default:
+		msg = fmt.Sprintf("RegisterMethod: Method %q has %d output parameters; needs at most two", rmn, rmt.NumOut())
 		Debug(msg)
 		return nil
 	}
-	r := rmt.In(2)
-	if r.Kind() != reflect.Ptr {
-		msg = fmt.Sprintf("RegisterMethod: Result type of method %q is not a reflect.Ptr:%q", rmn, r)
-		Debug(msg)
-		return nil
-	}
-
-	if rm.Type.NumOut() != 1 {
-		msg = fmt.Sprintf("RegisterMethod: Method %q has %d output parameters; needs exactly one", rmn, rmt.NumOut())
-		Debug(msg)
-		return nil
-	}
-	ret := rmt.Out(0)
-	if ret != reflect.TypeOf((*error)(nil)).Elem() {
-		msg = fmt.Sprintf("RegisterMethod: Return type of method %q is not a must be error:%q", rmn, ret)
-		Debug(msg)
-		return nil
-	}
-	m := &Method{rmn, p, r, rm}
+	m := &Method{rmn, paramsTypes, resultType, hasError, rm}
 	return m
 }
 
@@ -216,58 +234,117 @@ func (svr *Server) Handler(b []byte) []byte {
  *   any - JSON-RPC response object
  */
 func (svr *Server) SingleHandler(jsonMap map[string]any) any {
+	resp, _ := svr.HandleRequest(jsonMap, nil)
+	return resp
+}
+
+/*
+ * HandleRequest handles a single JSON-RPC request with optional streaming.
+ *
+ * When stream is non-nil and the method result is a stream type (channel,
+ * slice, array or iterator), each value is pushed through the handler and
+ * the returned response is the final message sent after the stream ends.
+ * When stream is nil, stream results are collected into a slice so that
+ * non-streaming transports keep a unary response.
+ *
+ * Parameters:
+ *   jsonMap map[string]any - Parsed JSON-RPC request
+ *   stream  *StreamHandler - Streaming handler, nil for unary dispatch
+ *
+ * Returns:
+ *   any  - JSON-RPC response object; nil when the stream was aborted
+ *   bool - Whether values were pushed through the stream handler; when
+ *          false the response is a complete unary payload
+ */
+func (svr *Server) HandleRequest(jsonMap map[string]any, stream *StreamHandler) (any, bool) {
 	id, jsonRpc, method, paramsData, errCode := ParseSingleRequestBody(jsonMap)
 	if errCode != WithoutError {
-		return E(id, jsonRpc, errCode)
+		return E(id, jsonRpc, errCode), false
 	}
 
 	if svr.RateLimiter != nil && !svr.RateLimiter.Allow() {
-		return CE(id, jsonRpc, "Too many requests")
+		return CE(id, jsonRpc, "Too many requests"), false
 	}
 
 	sName, mName, err := ParseRequestMethod(method)
 	if err != nil {
-		return E(id, jsonRpc, MethodNotFound)
+		return E(id, jsonRpc, MethodNotFound), false
 	}
 	s, ok := svr.Sm.Load(sName)
 	if !ok {
-		sName = lineToHump(sName) // support HelloWorld and hello_world
+		sName = LineToHump(sName) // support HelloWorld and hello_world
 		s, ok = svr.Sm.Load(sName)
 		if !ok {
-			return E(id, jsonRpc, MethodNotFound)
+			return E(id, jsonRpc, MethodNotFound), false
 		}
 	}
 	m, ok := s.(*Service).Mm[mName]
 	if !ok {
-		return E(id, jsonRpc, MethodNotFound)
+		return E(id, jsonRpc, MethodNotFound), false
 	}
-	params := reflect.New(m.ParamsType.Elem())
-	pv := params.Interface()
-	err = GetStruct(paramsData, pv)
+	args, err := DecodeArgs(paramsData, m.ParamsTypes)
 	if err != nil {
-		return E(id, jsonRpc, InvalidParams)
+		Debug(err)
+		return E(id, jsonRpc, InvalidParams), false
 	}
-	result := reflect.New(m.ResultType.Elem())
+	hookParams := make([]any, len(args))
+	for k, v := range args {
+		hookParams[k] = v.Interface()
+	}
 
 	// before
-	err = svr.Before(id, mName, params.Elem().Interface())
+	err = svr.Before(id, mName, hookParams)
 	if err != nil {
-		return CE(id, jsonRpc, err.Error())
+		return CE(id, jsonRpc, err.Error()), false
 	}
 
-	r := m.Method.Func.Call([]reflect.Value{s.(*Service).V, params, result})
-
-	if i := r[0].Interface(); i != nil {
-		Debug(i.(error))
-		return E(id, jsonRpc, InternalError)
+	in := make([]reflect.Value, 0, len(args)+1)
+	in = append(in, s.(*Service).V)
+	in = append(in, args...)
+	r := m.Method.Func.Call(in)
+	if m.HasError {
+		if e := r[len(r)-1]; !e.IsNil() {
+			Debug(e.Interface())
+			return E(id, jsonRpc, InternalError), false
+		}
+		r = r[:len(r)-1]
 	}
+
+	streamed := m.ResultType != nil && len(r) > 0 && IsStreamType(m.ResultType)
+	var result any
+	// pushed reports whether values were emitted through the stream handler,
+	// so the transport must deliver the final response over the same channel.
+	pushed := false
+	if streamed {
+		if stream != nil {
+			pushed = true
+			if stream.Begin != nil {
+				stream.Begin()
+			}
+			if err := EmitStream(r[0], stream.OnValue); err != nil {
+				Debug(err)
+				return E(id, jsonRpc, InternalError), pushed
+			}
+			result = nil
+		} else {
+			values, err := CollectStream(r[0])
+			if err != nil {
+				Debug(err)
+				return E(id, jsonRpc, InternalError), false
+			}
+			result = values
+		}
+	} else if m.ResultType != nil && len(r) > 0 {
+		result = r[0].Interface()
+	}
+
 	// after
-	err = svr.After(id, mName, result.Elem().Interface())
+	err = svr.After(id, mName, result)
 	if err != nil {
-		return CE(id, jsonRpc, err.Error())
+		return CE(id, jsonRpc, err.Error()), pushed
 	}
 
-	return S(id, jsonRpc, result.Elem().Interface())
+	return S(id, jsonRpc, result), pushed
 }
 
 /*
@@ -313,7 +390,7 @@ func (svr *Server) After(id any, method string, result any) error {
 }
 
 /*
- * lineToHump converts a snake_case string to camelCase.
+ * LineToHump converts a snake_case string to camelCase.
  *
  * Parameters:
  *   in string - Input snake_case string
@@ -321,7 +398,7 @@ func (svr *Server) After(id any, method string, result any) error {
  * Returns:
  *   string - camelCase string
  */
-func lineToHump(in string) string {
+func LineToHump(in string) string {
 	s := strings.Split(in, "_")
 	for k, v := range s {
 		s[k] = Capitalize(v)
@@ -339,21 +416,21 @@ func lineToHump(in string) string {
  *   string - String with first letter capitalized
  */
 func Capitalize(str string) string {
-	var upperStr string
+	var upperStr strings.Builder
 	vv := []rune(str)
-	for i := 0; i < len(vv); i++ {
+	for i := range vv {
 		if i == 0 {
 			if vv[i] >= 97 && vv[i] <= 122 {
 				vv[i] -= 32
-				upperStr += string(vv[i])
+				upperStr.WriteString(string(vv[i]))
 			} else {
 				return str
 			}
 		} else {
-			upperStr += string(vv[i])
+			upperStr.WriteString(string(vv[i]))
 		}
 	}
-	return upperStr
+	return upperStr.String()
 }
 
 /*

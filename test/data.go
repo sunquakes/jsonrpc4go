@@ -14,6 +14,8 @@ func serverAddr(s server.Server) string {
 		return fmt.Sprintf("127.0.0.1:%d", t.Port)
 	case *server.TcpServer:
 		return fmt.Sprintf("127.0.0.1:%d", t.Port)
+	case *server.StreamableHttpServer:
+		return fmt.Sprintf("127.0.0.1:%d", t.Port)
 	}
 	return ""
 }

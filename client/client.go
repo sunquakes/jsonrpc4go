@@ -1,6 +1,7 @@
 package client
 
 import (
+	"iter"
 	"strconv"
 	"sync/atomic"
 )
@@ -27,6 +28,18 @@ type Protocol interface {
 }
 
 /*
+ * BatchResult holds the outcome of one request inside a batch call.
+ *
+ * Fields:
+ *   Result any   - The decoded result value of the request
+ *   Err    error - The error returned for the request, nil on success
+ */
+type BatchResult struct {
+	Result any
+	Err    error
+}
+
+/*
  * Client defines the interface for JSON-RPC client operations.
  */
 type Client interface {
@@ -47,40 +60,77 @@ type Client interface {
 	SetPoolOptions(any)
 
 	/*
-	 * Call executes a single JSON-RPC method call.
+	 * Call executes a single JSON-RPC method call with positional arguments.
 	 *
 	 * Parameters:
-	 *   string - JSON-RPC method name
-	 *   any    - Method parameters
-	 *   any    - Pointer to store the result
-	 *   bool   - Whether this is a notification (no response expected)
+	 *   method string - JSON-RPC method name
+	 *   args   ...any - Method arguments, sent as a positional array
 	 *
 	 * Returns:
+	 *   any   - The decoded result value
 	 *   error - Error if the call fails
 	 */
-	Call(string, any, any, bool) error
+	Call(method string, args ...any) (any, error)
 
 	/*
-	 * BatchAppend adds a request to the batch operation list.
+	 * Notify executes a JSON-RPC notification; no result is returned.
 	 *
 	 * Parameters:
-	 *   string - JSON-RPC method name
-	 *   any    - Method parameters
-	 *   any    - Pointer to store the result
-	 *   bool   - Whether this is a notification (no response expected)
+	 *   method string - JSON-RPC method name
+	 *   args   ...any - Method arguments, sent as a positional array
 	 *
 	 * Returns:
-	 *   *error - Pointer to an error variable that will be populated if the request fails
+	 *   error - Error if the notification fails
 	 */
-	BatchAppend(string, any, any, bool) *error
+	Notify(method string, args ...any) error
+
+	/*
+	 * BatchAppend adds a request with positional arguments to the batch list.
+	 *
+	 * Parameters:
+	 *   method string - JSON-RPC method name
+	 *   args   ...any - Method arguments, sent as a positional array
+	 */
+	BatchAppend(method string, args ...any)
 
 	/*
 	 * BatchCall executes all requests in the batch list.
 	 *
 	 * Returns:
-	 *   error - Error if the batch operation fails
+	 *   []BatchResult - Per-request results in the order they were appended
+	 *   error         - Error if the batch operation itself fails
 	 */
-	BatchCall() error
+	BatchCall() ([]BatchResult, error)
+}
+
+/*
+ * Streamer defines the optional interface for transports that can push
+ * streaming results value by value.
+ */
+type Streamer interface {
+	/*
+	 * Stream executes a JSON-RPC method call and yields each streamed
+	 * result value as it arrives. Unary results yield exactly one value.
+	 *
+	 * Parameters:
+	 *   method string - JSON-RPC method name
+	 *   args   ...any - Method arguments, sent as a positional array
+	 *
+	 * Returns:
+	 *   iter.Seq2[any, error] - Sequence of streamed values and errors
+	 */
+	Stream(method string, args ...any) iter.Seq2[any, error]
+}
+
+/*
+ * normalizeArgs turns a nil argument list into an empty slice so that
+ * params is always encoded as a JSON array on the wire.
+ */
+func normalizeArgs(args []any) []any {
+	if args == nil {
+		return []any{}
+	}
+	return args
 }
 
 /*
