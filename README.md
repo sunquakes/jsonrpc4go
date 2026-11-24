@@ -26,6 +26,8 @@ s.Start()
 go get -u github.com/sunquakes/jsonrpc4go
 ```
 ## 📖 Getting started
+Server methods take value arguments and return the result directly (optionally followed by an `error`). Arguments travel as a positional JSON array (`"params":[1,6]`).
+
 - Server
 ```go
 package main
@@ -36,14 +38,8 @@ import (
 
 type IntRpc struct{}
 
-type Params struct {
-	A int `json:"a"`
-	B int `json:"b"`
-}
-
-func (i *IntRpc) Add(params *Params, result *int) error {
-	*result = params.A + params.B
-	return nil
+func (i *IntRpc) Add(a, b int) int {
+	return a + b
 }
 
 func main() {
@@ -61,23 +57,13 @@ import (
 	"github.com/sunquakes/jsonrpc4go"
 )
 
-type Params struct {
-	A int `json:"a"`
-	B int `json:"b"`
-}
-
-type Result2 struct {
-	C int `json:"c"`
-}
-
 func main() {
-	result := new(int)
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232")
-	err := c.Call("Add", Params{1, 6}, result, false)
-	// data sent: {"id":"1604283212", "jsonrpc":"2.0", "method":"IntRpc/Add", "params":{"a":1,"b":6}}
-	// data received: {"id":"1604283212", "jsonrpc":"2.0", "result":7}
+	result, err := jsonrpc4go.Call[int](c, "Add", 1, 6)
+	// data sent: {"id":"1","jsonrpc":"2.0","method":"IntRpc/Add","params":[1,6]}
+	// data received: {"id":"1","jsonrpc":"2.0","result":7}
 	fmt.Println(err) // nil
-	fmt.Println(*result) // 7
+	fmt.Println(result) // 7
 }
 ```
 ## ⚔️ Test
@@ -94,12 +80,14 @@ c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232") // the protocol 
 - Hooks (Add the following code before 's.Start()')
 ```go
 // Set the hook function of before method execution
+// params is a []any of the decoded positional arguments, e.g. []any{1, 6}
 s.SetBeforeFunc(func(id interface{}, method string, params interface{}) error {
     // If the function returns an error, the program stops execution and returns an error message to the client
     // return errors.New("Custom Error")
     return nil
 })
 // Set the hook function of after method execution
+// result is the value returned by the method, e.g. 7
 s.SetAfterFunc(func(id interface{}, method string, result interface{}) error {
     // If the function returns an error, the program stops execution and returns an error message to the client
     // return errors.New("Custom Error")
@@ -119,28 +107,22 @@ c.SetOptions(client.TcpOptions{"aaaaaa", nil}) // Custom package EOF when the pr
 ```
 - Notify
 ```go
-// notify
-result2 := new(Result2)
-err2 := c.Call("Add2", Params{1, 6}, result2, true)
-// data sent: {"jsonrpc":"2.0","method":"IntRpc/Add2","params":{"a":1,"b":6}}
-// data received: {"jsonrpc":"2.0","result":{"c":7}}
-fmt.Println(err2) // nil
-fmt.Println(*result2) // {7}
+// notify: no result is returned, only an error
+err := c.Notify("Add2", 1, 6)
+// data sent: {"jsonrpc":"2.0","method":"IntRpc/Add2","params":[1,6]}
+fmt.Println(err) // nil
 ```
 - Batch call
 ```go
 // batch call
-result3 := new(int)
-err3 := c.BatchAppend("Add1", Params{1, 6}, result3, false)
-result4 := new(int)
-err4 := c.BatchAppend("Add", Params{2, 3}, result4, false)
-c.BatchCall()
-// data sent: [{"id":"1604283212","jsonrpc":"2.0","method":"IntRpc/Add1","params":{"a":1,"b":6}},{"id":"1604283212","jsonrpc":"2.0","method":"IntRpc/Add","params":{"a":2,"b":3}}]
-// data received: [{"id":"1604283212","jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found","data":null}},{"id":"1604283212","jsonrpc":"2.0","result":5}]
-fmt.Println((*err3).Error()) // Method not found
-fmt.Println(*result3) // 0
-fmt.Println(*err4) // nil
-fmt.Println(*result4) // 5
+c.BatchAppend("Add1", 1, 6)
+c.BatchAppend("Add", 2, 3)
+results, err := c.BatchCall()
+// data sent: [{"id":"1","jsonrpc":"2.0","method":"IntRpc/Add1","params":[1,6]},{"id":"2","jsonrpc":"2.0","method":"IntRpc/Add","params":[2,3]}]
+// data received: [{"id":"1","jsonrpc":"2.0","error":{"code":-32601,"message":"Method not found","data":null}},{"id":"2","jsonrpc":"2.0","result":5}]
+fmt.Println(err) // <nil>
+fmt.Println(results[0].Err) // Method not found
+fmt.Println(results[1].Result) // 5
 ```
 - Client-Side Load-Balancing
 ```go

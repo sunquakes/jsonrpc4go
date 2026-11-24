@@ -1,5 +1,22 @@
 ## [Unreleased]
 
+### Changed
+- **Breaking**: switched to the JS-style RPC API. Server methods now take
+  value arguments and return the result directly (optionally followed by an
+  error), e.g. `func (i *IntRpc) Add(a, b int) int`; the old
+  `(params *P, result *R) error` signature is no longer registered.
+- **Breaking**: params travel as a positional JSON array
+  (`"params":[1,6]`) instead of a named object.
+- **Breaking**: `client.Client.Call` is now `Call(method string, args ...any)
+  (any, error)`; `BatchAppend(method string, args ...any)` returns nothing and
+  `BatchCall()` returns `([]BatchResult, error)`.
+
+### Added
+- Added `client.Client.Notify(method string, args ...any) error` for
+  one-way notifications.
+- Added the generic helper `jsonrpc4go.Call[T](c, method, args...) (T, error)`
+  that decodes the result directly into `T`.
+
 ## [v1.7.1] - 2026-11-16
 
 ### CI
