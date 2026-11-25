@@ -196,6 +196,15 @@ fmt.Println(results[1].Result) // 5
 ```go
 c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127.0.0.1:3234")
 ```
+- Bind a method to a typed function
+```go
+// Bind fixes the client, method and result type once.
+add := jsonrpc4go.Bind[int](c, "Add")
+add2 := jsonrpc4go.Bind[Result](c, "Add2")
+
+sum, err := add(1, 6)   // 7, <nil>
+res, err := add2(2, 3)  // {5}, <nil>
+```
 - Typed client generation (`rpcgen`)
 ```go
 // api.go: describe the remote service as an interface

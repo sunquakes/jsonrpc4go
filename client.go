@@ -74,6 +74,19 @@ func Call[T any](c client.Client, method string, args ...any) (T, error) {
 }
 
 /**
+ * @Description: Bind fixes a client and method into a typed function, so call
+ * sites avoid repeating the generic argument and the method name
+ * @Param c: Client interface
+ * @Param method: Method name
+ * @Return func(args ...any) (T, error): Bound call function
+ */
+func Bind[T any](c client.Client, method string) func(args ...any) (T, error) {
+	return func(args ...any) (T, error) {
+		return Call[T](c, method, args...)
+	}
+}
+
+/**
  * @Description: Stream executes a JSON-RPC method on a streaming-capable
  * client and decodes each streamed value into T
  * @Param c: Client interface (must also implement client.Streamer)
