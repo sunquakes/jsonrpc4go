@@ -1111,8 +1111,8 @@ func TestCustomToolStream(t *testing.T) {
 			if ctx.ProtocolVersion() != "2025-11-25" {
 				t.Errorf("protocol version %q", ctx.ProtocolVersion())
 			}
-			ctx.Log("warning", "unit", "careful")
-			ctx.Progress(1, 2, "halfway")
+			_ = ctx.Log("warning", "unit", "careful")
+			_ = ctx.Progress(1, 2, "halfway")
 			return "done", nil
 		},
 	})
@@ -1149,7 +1149,7 @@ func TestCustomToolUnary(t *testing.T) {
 	s.RegisterMcpTool(McpTool{
 		Name: "unary_tool", Description: "json only",
 		Handler: func(ctx *McpContext, a map[string]any) (any, error) {
-			ctx.Progress(1, 2, "ignored") // no progressToken: stays silent
+			_ = ctx.Progress(1, 2, "ignored") // no progressToken: stays silent
 			return map[string]any{"n": 4}, nil
 		},
 	})
@@ -1243,7 +1243,7 @@ func TestEndStreamSendResultReplay(t *testing.T) {
 		Name:        "reconnect_tool",
 		Description: "ends the stream early",
 		Handler: func(ctx *McpContext, a map[string]any) (any, error) {
-			ctx.Log("info", "unit", "started")
+			_ = ctx.Log("info", "unit", "started")
 			ctx.EndStream()
 			ctx.SendResult(map[string]any{
 				"content": []map[string]any{{"type": "text", "text": "late result"}},

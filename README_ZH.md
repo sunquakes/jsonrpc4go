@@ -192,6 +192,22 @@ fmt.Println(results[1].Result) // 5
 ```go
 c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127.0.0.1:3234")
 ```
+- 类型化客户端代码生成（`rpcgen`）
+```go
+// api.go：用接口描述远端服务
+//go:generate go run github.com/sunquakes/jsonrpc4go/cmd/rpcgen -iface IntRpcApi -service IntRpc -out intrpc_rpc.go
+
+type IntRpcApi interface {
+    Add(a, b int) (int, error)
+    Add2(a, b int) (Result, error)
+}
+
+// main.go：执行 `go generate ./...` 后，每次调用都是普通的强类型 Go 调用
+c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232")
+api := NewIntRpcApiClient(c)
+sum, err := api.Add(1, 6) // 7, <nil>
+```
+每个方法必须返回 `(T, error)` 或 `error`；可变参数方法、泛型方法和内嵌接口会在生成阶段直接报错，错误在 `go generate` 时暴露，而不是等到运行时。
 
 ## 服务注册和发现
 ### Consul

@@ -52,6 +52,12 @@
 - Added an MCP conformance CI job using
   `modelcontextprotocol/conformance` with a documented
   `conformance-baseline.yml` of known failures.
+- Added the `cmd/rpcgen` code generator: it turns an interface describing the
+  remote service into a typed client (`NewXxxClient(c)`) whose methods call
+  `jsonrpc4go.Call[T]`, so call sites are ordinary typed Go calls verified at
+  compile time. Methods must return `(T, error)` or `error`; variadic,
+  generic and embedded interfaces are rejected. See
+  `examples/http/rpcgen` for a `go:generate` setup.
 
 ## [v1.7.1] - 2026-11-16
 
