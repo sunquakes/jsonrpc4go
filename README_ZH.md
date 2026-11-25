@@ -30,6 +30,8 @@ s.Start()
 - 支持 `Mcp-Session-Id` 会话与 `Mcp-Protocol-Version` 版本协商（`2024-11-05` / `2025-03-26` / `2025-06-18`）。
 - 支持 `Last-Event-ID` 事件重放、GET 服务端→客户端 SSE 通道、DELETE 结束会话。
 - 通知请求返回 `202`；浏览器 `Origin` 白名单校验失败返回 `403`。
+- 可选的 `Host` 白名单（`AllowedHosts`）会以 `421` 拒绝其他主机，防止针对本地
+  服务器的 DNS rebinding 攻击。
 
 返回切片、数组、channel 或迭代器（`iter.Seq` / `iter.Seq2`）的方法，在该传输上会逐值推送；
 tcp/http 传输则将其收集为数组返回。
@@ -49,7 +51,10 @@ func (s *StreamRpc) Count(n int) []int {
 s, _ := jsonrpc4go.NewServer("streamable-http", 3232)
 s.Register(new(IntRpc))
 s.Register(new(StreamRpc))
-s.SetOptions(server.StreamableHttpOptions{AllowedOrigins: []string{"https://client.example"}})
+s.SetOptions(server.StreamableHttpOptions{
+	AllowedOrigins: []string{"https://client.example"},
+	AllowedHosts:   []string{"localhost", "127.0.0.1"}, // 可选的 DNS rebinding 防护
+})
 s.Start() // 提供 http://0.0.0.0:3232/mcp 服务
 ```
 
@@ -71,6 +76,14 @@ values, _ := c.Call("Count", 2) // [1, 2]
   的名字发布为工具；`inputSchema` 通过反射生成（Go 无法读取参数名，值参数命名为
   `arg0..argN`，结构体参数则展开为其 JSON 标签字段）。旧的 `Service/method`
   JSON-RPC 分发保持完全兼容。
+- 一致性测试：CI 使用官方
+  [`modelcontextprotocol/conformance`](https://github.com/modelcontextprotocol/conformance)
+  server 套件对示例服务器进行校验；已知未覆盖项（resources、prompts、logging、
+  completion、elicitation 以及套件专用 fixture 工具）记录在
+  `conformance-baseline.yml` 中，任何新增回归都会使构建失败。
+- **注意**：该套件默认按最新的规范修订校验，比本服务器协商的协议版本
+  （`2024-11-05` … `2025-06-18`）更严格；将套件固定到对应的规范版本可以逐步
+  缩减基线。
 
 ## 🧰 安装
 ```

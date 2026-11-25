@@ -184,6 +184,33 @@ func TestMcpSubscribeFanout(t *testing.T) {
 	}
 }
 
+func TestCheckHost(t *testing.T) {
+	tests := []struct {
+		name    string
+		allowed []string
+		host    string
+		wantOK  bool
+	}{
+		{"empty allowlist", nil, "evil.com", true},
+		{"plain match", []string{"localhost"}, "localhost", true},
+		{"match with port", []string{"localhost"}, "localhost:3001", true},
+		{"allowlist entry with port", []string{"localhost:3001"}, "localhost", true},
+		{"ipv6 loopback", []string{"[::1]"}, "[::1]:3001", true},
+		{"rebinding host", []string{"localhost", "127.0.0.1"}, "evil.com", false},
+		{"case insensitive", []string{"LocalHost"}, "localhost", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &StreamableHttpServer{Options: StreamableHttpOptions{AllowedHosts: tc.allowed}}
+			req := httptest.NewRequest(http.MethodPost, McpEndpoint, nil)
+			req.Host = tc.host
+			if ok := s.checkHost(req); ok != tc.wantOK {
+				t.Errorf("checkHost(%q)=%v, want %v", tc.host, ok, tc.wantOK)
+			}
+		})
+	}
+}
+
 func TestCheckOrigin(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -30,6 +30,8 @@ so any MCP agent client can connect directly:
 - `Mcp-Session-Id` sessions, `Mcp-Protocol-Version` negotiation (`2024-11-05` / `2025-03-26` / `2025-06-18`).
 - `Last-Event-ID` replay, a GET server→client SSE channel, `DELETE` to end a session.
 - Notifications are answered with `202`; a browser `Origin` allow-list is enforced with `403`.
+- An optional `Host` allow-list (`AllowedHosts`) rejects other hosts with `421`,
+  preventing DNS rebinding attacks against localhost servers.
 
 Methods returning a slice, array, channel or iterator (`iter.Seq` / `iter.Seq2`) are
 pushed value by value on this transport; the tcp/http transports collect them into an array.
@@ -49,7 +51,10 @@ func (s *StreamRpc) Count(n int) []int {
 s, _ := jsonrpc4go.NewServer("streamable-http", 3232)
 s.Register(new(IntRpc))
 s.Register(new(StreamRpc))
-s.SetOptions(server.StreamableHttpOptions{AllowedOrigins: []string{"https://client.example"}})
+s.SetOptions(server.StreamableHttpOptions{
+	AllowedOrigins: []string{"https://client.example"},
+	AllowedHosts:   []string{"localhost", "127.0.0.1"}, // optional DNS-rebinding guard
+})
 s.Start() // serves http://0.0.0.0:3232/mcp
 ```
 
@@ -73,6 +78,15 @@ values, _ := c.Call("Count", 2) // [1, 2]
   parameter names, so value parameters become `arg0..argN` while struct
   parameters expand to their JSON-tagged fields). The legacy `Service/method`
   JSON-RPC dispatch keeps working unchanged.
+- Conformance: the CI runs the official
+  [`modelcontextprotocol/conformance`](https://github.com/modelcontextprotocol/conformance)
+  server suite against the example server; known gaps (resources, prompts,
+  logging, completion, elicitation and the suite's fixture tools) are listed in
+  `conformance-baseline.yml`, so any new regression fails the build.
+- **Note**: the suite defaults to the newest spec revision, which is stricter
+  than the protocol versions this server negotiates (`2024-11-05` …
+  `2025-06-18`). Pin the conformance tool to a matching spec version to shrink
+  the baseline over time.
 
 ## 🧰 Installing
 ```

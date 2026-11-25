@@ -12,7 +12,7 @@ import (
  * @Field Result: Result
  */
 type SuccessResponse struct {
-	Id      string `json:"id"`
+	Id      any    `json:"id"`
 	JsonRpc string `json:"jsonrpc"`
 	Result  any    `json:"result"`
 }
@@ -46,7 +46,7 @@ type Error struct {
  * @Field Error: Error information
  */
 type ErrorResponse struct {
-	Id      string `json:"id"`
+	Id      any    `json:"id"`
 	JsonRpc string `json:"jsonrpc"`
 	Error   Error  `json:"error"`
 }
@@ -76,7 +76,7 @@ func E(id any, jsonRpc string, errCode int) any {
 	}
 	var res any
 	if id != nil {
-		res = ErrorResponse{id.(string), jsonRpc, e}
+		res = ErrorResponse{id, jsonRpc, e}
 	} else {
 		res = ErrorNotifyResponse{jsonRpc, e}
 	}
@@ -98,7 +98,7 @@ func CE(id any, jsonRpc string, errMessage string) any {
 	}
 	var res any
 	if id != nil {
-		res = ErrorResponse{id.(string), jsonRpc, e}
+		res = ErrorResponse{id, jsonRpc, e}
 	} else {
 		res = ErrorNotifyResponse{jsonRpc, e}
 	}
@@ -115,7 +115,7 @@ func CE(id any, jsonRpc string, errMessage string) any {
 func S(id any, jsonRpc string, result any) any {
 	var res any
 	if id != nil {
-		res = SuccessResponse{id.(string), jsonRpc, result}
+		res = SuccessResponse{id, jsonRpc, result}
 	} else {
 		res = SuccessNotifyResponse{jsonRpc, result}
 	}

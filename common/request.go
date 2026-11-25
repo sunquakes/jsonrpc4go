@@ -37,7 +37,7 @@ type SingleRequest struct {
  * @Field Params: Parameters
  */
 type Request struct {
-	Id      string `json:"id"`
+	Id      any    `json:"id"`
 	JsonRpc string `json:"jsonrpc"`
 	Method  string `json:"method"`
 	Params  any    `json:"params"`
@@ -248,7 +248,7 @@ func DecodeArgs(paramsData any, types []reflect.Type) ([]reflect.Value, error) {
 func Rs(id any, method string, params any) any {
 	var req any
 	if id != nil {
-		req = Request{id.(string), JsonRpc, method, params}
+		req = Request{id, JsonRpc, method, params}
 	} else {
 		req = NotifyRequest{JsonRpc, method, params}
 	}
