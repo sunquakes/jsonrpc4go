@@ -272,6 +272,11 @@ func readSSE(r io.Reader, onMessage func(sseMessage) error) error {
 		m.Data = append([]byte(nil), dataBuf.Bytes()...)
 		dataBuf.Reset()
 		hasData = false
+		if len(m.Data) == 0 {
+			// Priming/keep-alive events carry no payload; skip them.
+			msg = sseMessage{}
+			return nil
+		}
 		return onMessage(m)
 	}
 	for scanner.Scan() {

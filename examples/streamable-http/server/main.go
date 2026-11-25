@@ -52,5 +52,9 @@ func main() {
 	}
 	s.Register(new(IntRpc))
 	s.Register(new(StreamRpc))
+	// Fixture tools/resources/prompts for the MCP conformance suite.
+	if hs, ok := s.(*server.StreamableHttpServer); ok {
+		registerFixtures(hs)
+	}
 	s.Start() // serves /mcp for both JSON-RPC and MCP clients
 }

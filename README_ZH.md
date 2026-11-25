@@ -27,7 +27,7 @@ s.Start()
 任何 MCP Agent 客户端都可以直连：
 
 - POST 请求：一元结果以 JSON 返回，流式结果以 Server-Sent Events（SSE）推送。
-- 支持 `Mcp-Session-Id` 会话与 `Mcp-Protocol-Version` 版本协商（`2024-11-05` / `2025-03-26` / `2025-06-18`）。
+- 支持 `Mcp-Session-Id` 会话与 `Mcp-Protocol-Version` 版本协商（`2024-11-05` / `2025-03-26` / `2025-06-18` / `2025-11-25`）。
 - 支持 `Last-Event-ID` 事件重放、GET 服务端→客户端 SSE 通道、DELETE 结束会话。
 - 通知请求返回 `202`；浏览器 `Origin` 白名单校验失败返回 `403`。
 - 可选的 `Host` 白名单（`AllowedHosts`）会以 `421` 拒绝其他主机，防止针对本地
@@ -78,12 +78,12 @@ values, _ := c.Call("Count", 2) // [1, 2]
   JSON-RPC 分发保持完全兼容。
 - 一致性测试：CI 使用官方
   [`modelcontextprotocol/conformance`](https://github.com/modelcontextprotocol/conformance)
-  server 套件对示例服务器进行校验；已知未覆盖项（resources、prompts、logging、
-  completion、elicitation 以及套件专用 fixture 工具）记录在
-  `conformance-baseline.yml` 中，任何新增回归都会使构建失败。
-- **注意**：该套件默认按最新的规范修订校验，比本服务器协商的协议版本
-  （`2024-11-05` … `2025-06-18`）更严格；将套件固定到对应的规范版本可以逐步
-  缩减基线。
+  server 套件对示例服务器进行校验，**全部 active 场景通过**（协议修订至
+  `2025-11-25`）：initialize/ping、tools（list/call/进度）、resources
+  （list/read/templates/subscribe）、prompts、completion、logging、服务端发起的
+  sampling 与 elicitation（SEP-1034 默认值、SEP-1330 枚举）、JSON Schema
+  2020-12 关键字保留、SSE priming 与 Last-Event-ID 恢复、DNS rebinding 防护。
+  `conformance-baseline.yml` 有意留空；未来任何缺口必须显式登记，否则构建失败。
 
 ## 🧰 安装
 ```

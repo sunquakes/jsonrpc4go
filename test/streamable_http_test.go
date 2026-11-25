@@ -184,6 +184,11 @@ func shParseSSE(t *testing.T, body []byte) []shEvent {
 				ev.id = strings.TrimSpace(strings.TrimPrefix(line, "id:"))
 			case strings.HasPrefix(line, "data:"):
 				payload := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+				if payload == "" {
+					// SSE priming/keep-alive frames carry no payload.
+					ev = shEvent{}
+					continue
+				}
 				if err := json.Unmarshal([]byte(payload), &ev.data); err != nil {
 					t.Fatalf("invalid SSE data %q: %v", payload, err)
 				}
@@ -242,6 +247,11 @@ func shReadEvents(t *testing.T, body io.Reader, n int) []shEvent {
 				cur.id = strings.TrimSpace(strings.TrimPrefix(line, "id:"))
 			case strings.HasPrefix(line, "data:"):
 				payload := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+				if payload == "" {
+					// SSE priming/keep-alive frames carry no payload.
+					cur = shEvent{}
+					continue
+				}
 				if err := json.Unmarshal([]byte(payload), &cur.data); err != nil {
 					ch <- res{nil}
 					return
@@ -301,10 +311,10 @@ func TestStreamableHandshake(t *testing.T) {
 	}
 	// An unsupported version falls back to the latest supported one.
 	_, headers, result = shInitialize(t, addr, "1999-01-01")
-	if headers.Get(server.McpProtocolHeader) != "2025-06-18" {
+	if headers.Get(server.McpProtocolHeader) != "2025-11-25" {
 		t.Errorf("fallback version %q", headers.Get(server.McpProtocolHeader))
 	}
-	if result["protocolVersion"] != "2025-06-18" {
+	if result["protocolVersion"] != "2025-11-25" {
 		t.Errorf("fallback result version %v", result["protocolVersion"])
 	}
 }
@@ -444,10 +454,11 @@ func TestStreamableLastEventIDReplay(t *testing.T) {
 	shPost(t, addr, map[string]any{
 		"jsonrpc": "2.0", "id": "9", "method": "StreamRpc/Count", "params": []any{3},
 	}, shSession(sid))
-	// Replay everything after event 2: the third value plus the final response.
+	// Replay everything after event 3: the third value plus the final
+	// response. Event 1 is the unrecorded SSE priming frame.
 	cancel, resp := shGet(t, addr, map[string]string{
 		server.McpSessionHeader:   sid,
-		server.McpLastEventHeader: "2",
+		server.McpLastEventHeader: "3",
 	})
 	defer cancel()
 	defer resp.Body.Close()
@@ -455,11 +466,14 @@ func TestStreamableLastEventIDReplay(t *testing.T) {
 		t.Fatalf("GET status %d", resp.StatusCode)
 	}
 	events := shReadEvents(t, resp.Body, 2)
-	if events[0].id != "3" || events[1].id != "4" {
-		t.Errorf("replayed ids %s %s, want 3 4", events[0].id, events[1].id)
+	if events[0].id != "4" || events[1].id != "5" {
+		t.Errorf("replayed ids %s %s, want 4 5", events[0].id, events[1].id)
 	}
 	if events[0].data["method"] != "notifications/stream" {
 		t.Errorf("replayed first event %v", events[0].data)
+	}
+	if events[1].data["method"] != nil || events[1].data["id"] != "9" {
+		t.Errorf("replayed final event %v", events[1].data)
 	}
 }
 

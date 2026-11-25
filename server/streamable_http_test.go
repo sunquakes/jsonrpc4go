@@ -1,14 +1,18 @@
 package server
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/sunquakes/jsonrpc4go/common"
 )
@@ -247,6 +251,7 @@ func TestHandleInitializeNegotiation(t *testing.T) {
 		{"2024-11-05", "2024-11-05"},
 		{"2025-03-26", "2025-03-26"},
 		{"2025-06-18", "2025-06-18"},
+		{"2025-11-25", "2025-11-25"},
 		{"1999-01-01", mcpLatestVersion},
 		{"", mcpLatestVersion},
 	} {
@@ -436,7 +441,8 @@ func TestInputSchema(t *testing.T) {
 		t.Errorf("schema type %v", schema["type"])
 	}
 	// Struct parameters expand to JSON-tagged exported fields.
-	schema = inputSchema([]reflect.Type{reflect.TypeFor[unitPerson]()})
+	person := unitPerson{Name: "amy", Age: 3, Skip: "gone", secret: "hidden"}
+	schema = inputSchema([]reflect.Type{reflect.TypeOf(person)})
 	props, _ = schema["properties"].(map[string]any)
 	if props["name"] == nil || props["age"] == nil {
 		t.Errorf("struct properties %v", props)
@@ -745,5 +751,541 @@ func TestMcpSessionConcurrency(t *testing.T) {
 			t.Fatalf("duplicate event id %d", ev.ID)
 		}
 		ids[ev.ID] = true
+	}
+}
+
+func TestInitializeCapabilities(t *testing.T) {
+	s := newUnitServer(t)
+	_, res := unitInitialize(t, s, "2025-11-25")
+	caps, _ := res["capabilities"].(map[string]any)
+	for _, name := range []string{"tools", "resources", "prompts", "logging", "completions"} {
+		if caps[name] == nil {
+			t.Errorf("capability %q missing: %v", name, caps)
+		}
+	}
+	resources, _ := caps["resources"].(map[string]any)
+	if resources["subscribe"] != true {
+		t.Errorf("resources.subscribe %v", resources["subscribe"])
+	}
+}
+
+func TestSessionRequestRouting(t *testing.T) {
+	sess := newMcpSession("2025-11-25")
+	if id := sess.nextRequestID(); id != "srv-1" {
+		t.Errorf("first request id %q", id)
+	}
+	if id := sess.nextRequestID(); id != "srv-2" {
+		t.Errorf("second request id %q", id)
+	}
+	ch := sess.beginRequest("srv-3")
+	if !sess.deliverResponse("srv-3", "value", nil) {
+		t.Fatal("deliverResponse lost the pending request")
+	}
+	reply := <-ch
+	if reply.result != "value" || reply.err != nil {
+		t.Errorf("reply %+v", reply)
+	}
+	if sess.deliverResponse("srv-4", nil, nil) {
+		t.Error("unknown id accepted")
+	}
+	// Error objects convert to reply errors carrying the message.
+	ch = sess.beginRequest("srv-5")
+	sess.deliverResponse("srv-5", nil, map[string]any{"code": -32602, "message": "declined"})
+	reply = <-ch
+	if reply.err == nil || reply.err.Error() != "declined" {
+		t.Errorf("error reply %+v", reply)
+	}
+	sess.endRequest("srv-5")
+	if sess.deliverResponse("srv-5", nil, nil) {
+		t.Error("endRequest did not unregister the pending request")
+	}
+}
+
+func TestClientResponsePost(t *testing.T) {
+	s := newUnitServer(t)
+	sid, _ := unitInitialize(t, s, "2025-11-25")
+	v, ok := s.Sessions.Load(sid)
+	if !ok {
+		t.Fatal("session not stored")
+	}
+	sess := v.(*mcpSession)
+	ch := sess.beginRequest("srv-1")
+	rec := unitPost(t, s, `{"jsonrpc":"2.0","id":"srv-1","result":{"action":"accept"}}`,
+		map[string]string{McpSessionHeader: sid})
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status %d body %s", rec.Code, rec.Body)
+	}
+	reply := <-ch
+	res, _ := reply.result.(map[string]any)
+	if res["action"] != "accept" || reply.err != nil {
+		t.Errorf("reply %+v", reply)
+	}
+	// Responses to unknown ids are accepted silently.
+	rec = unitPost(t, s, `{"jsonrpc":"2.0","id":"srv-9","result":{}}`,
+		map[string]string{McpSessionHeader: sid})
+	if rec.Code != http.StatusAccepted {
+		t.Errorf("unknown id status %d", rec.Code)
+	}
+	// Error objects route as errors.
+	ch = sess.beginRequest("srv-2")
+	rec = unitPost(t, s, `{"jsonrpc":"2.0","id":"srv-2","error":{"code":-32602,"message":"declined"}}`,
+		map[string]string{McpSessionHeader: sid})
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("error response status %d", rec.Code)
+	}
+	reply = <-ch
+	if reply.err == nil || reply.err.Error() != "declined" {
+		t.Errorf("error reply %+v", reply)
+	}
+}
+
+func TestMcpToolResponse(t *testing.T) {
+	// Handler errors become isError tool results.
+	resp, ok := mcpToolResponse("1", nil, errors.New("boom")).(common.SuccessResponse)
+	if !ok {
+		t.Fatal("error result not converted to a tool result")
+	}
+	env, _ := resp.Result.(map[string]any)
+	if env["isError"] != true {
+		t.Errorf("isError %v", env["isError"])
+	}
+	content, _ := env["content"].([]map[string]any)
+	if len(content) != 1 || content[0]["text"] != "boom" {
+		t.Errorf("content %v", env["content"])
+	}
+	// Maps carrying "content" pass through as full CallToolResults.
+	full := map[string]any{
+		"content": []map[string]any{{"type": "image", "data": "AAA=", "mimeType": "image/png"}},
+		"isError": false,
+	}
+	resp, _ = mcpToolResponse("2", full, nil).(common.SuccessResponse)
+	env, _ = resp.Result.(map[string]any)
+	items, _ := env["content"].([]map[string]any)
+	if len(items) != 1 || items[0]["type"] != "image" {
+		t.Errorf("passthrough content %v", env["content"])
+	}
+	// Plain values are JSON-encoded as text content.
+	resp, _ = mcpToolResponse("3", map[string]any{"a": 1}, nil).(common.SuccessResponse)
+	env, _ = resp.Result.(map[string]any)
+	items, _ = env["content"].([]map[string]any)
+	if env["isError"] != false || items[0]["text"] != `{"a":1}` {
+		t.Errorf("encoded result %v", env)
+	}
+}
+
+func TestMatchResourceTemplate(t *testing.T) {
+	tests := []struct {
+		tmpl string
+		uri  string
+		want bool
+	}{
+		{"test://template/{id}/data", "test://template/42/data", true},
+		{"test://template/{id}/data", "test://template//data", false},
+		{"test://template/{id}/data", "test://template/42/other", false},
+		{"test://template/{id}/data", "test://template/42", false},
+		{"test://static", "test://static", true},
+	}
+	for _, tc := range tests {
+		if got := matchResourceTemplate(tc.tmpl, tc.uri); got != tc.want {
+			t.Errorf("matchResourceTemplate(%q, %q)=%v, want %v", tc.tmpl, tc.uri, got, tc.want)
+		}
+	}
+}
+
+func TestRegisterMcpToolListing(t *testing.T) {
+	s := newUnitServer(t)
+	handler := func(ctx *McpContext, a map[string]any) (any, error) { return nil, nil }
+	schema := map[string]any{"type": "object", "properties": map[string]any{"x": map[string]any{"type": "string"}}}
+	s.RegisterMcpTool(McpTool{Name: "exact_tool", Description: "first", InputSchema: schema, Handler: handler})
+	s.RegisterMcpTool(McpTool{Name: "second_tool", Description: "second", Handler: handler})
+	// Re-registering keeps the original position and replaces the definition.
+	s.RegisterMcpTool(McpTool{Name: "exact_tool", Description: "updated", InputSchema: schema, Handler: handler})
+	tools := s.listTools()
+	if len(tools) != 7 {
+		t.Fatalf("tool count %d, want 7", len(tools))
+	}
+	if tools[5]["name"] != "exact_tool" || tools[6]["name"] != "second_tool" {
+		t.Errorf("custom tool order %v %v", tools[5]["name"], tools[6]["name"])
+	}
+	if tools[5]["description"] != "updated" {
+		t.Errorf("re-registration kept %v", tools[5]["description"])
+	}
+	got, _ := tools[5]["inputSchema"].(map[string]any)
+	if !reflect.DeepEqual(got, schema) {
+		t.Errorf("custom schema %v", got)
+	}
+	// A nil schema falls back to an empty object schema.
+	def, _ := tools[6]["inputSchema"].(map[string]any)
+	if def["type"] != "object" {
+		t.Errorf("default schema %v", def)
+	}
+}
+
+func TestResourceMethods(t *testing.T) {
+	s := newUnitServer(t)
+	s.RegisterMcpResource(McpResource{URI: "test://text", Name: "Text", Title: "T", Description: "d", Text: "hello"})
+	s.RegisterMcpResource(McpResource{URI: "test://bin", Name: "Bin", Blob: []byte{1, 2, 3}})
+	s.RegisterMcpResourceTemplate(McpResourceTemplate{
+		URITemplate: "test://t/{id}", Name: "Tpl", MimeType: "text/markdown",
+		Read: func(uri string) (string, []byte, bool) { return "read " + uri, nil, true },
+	})
+	s.RegisterMcpResourceTemplate(McpResourceTemplate{URITemplate: "test://dead/{id}", Name: "Dead"})
+	resp := unitRequest(t, s, "", map[string]any{"jsonrpc": "2.0", "id": "1", "method": "resources/list"})
+	res, _ := resp["result"].(map[string]any)
+	items, _ := res["resources"].([]any)
+	if len(items) != 2 {
+		t.Fatalf("resources %v", res["resources"])
+	}
+	first, _ := items[0].(map[string]any)
+	if first["uri"] != "test://text" || first["title"] != "T" || first["description"] != "d" {
+		t.Errorf("resource item %v", first)
+	}
+	if first["mimeType"] != nil {
+		t.Errorf("empty mimeType should be omitted: %v", first)
+	}
+	second, _ := items[1].(map[string]any)
+	if second["title"] != nil || second["description"] != nil {
+		t.Errorf("empty fields leaked: %v", second)
+	}
+	resp = unitRequest(t, s, "", map[string]any{"jsonrpc": "2.0", "id": "2", "method": "resources/templates/list"})
+	res, _ = resp["result"].(map[string]any)
+	tpls, _ := res["resourceTemplates"].([]any)
+	if len(tpls) != 2 {
+		t.Fatalf("templates %v", res["resourceTemplates"])
+	}
+	read := func(id, uri string) map[string]any {
+		resp := unitRequest(t, s, "", map[string]any{
+			"jsonrpc": "2.0", "id": id, "method": "resources/read",
+			"params": map[string]any{"uri": uri},
+		})
+		res, _ := resp["result"].(map[string]any)
+		if res != nil {
+			return res
+		}
+		errObj, _ := resp["error"].(map[string]any)
+		if errObj == nil {
+			t.Fatalf("read %s: %v", uri, resp)
+		}
+		if errObj["code"] != float64(common.InvalidParams) {
+			t.Errorf("read %s error %v", uri, errObj)
+		}
+		return nil
+	}
+	// Static text resource.
+	res = read("3", "test://text")
+	contents, _ := res["contents"].([]any)
+	item, _ := contents[0].(map[string]any)
+	if item["text"] != "hello" || item["mimeType"] != "text/plain" {
+		t.Errorf("text read %v", item)
+	}
+	// Binary resource is base64 encoded.
+	res = read("4", "test://bin")
+	contents, _ = res["contents"].([]any)
+	item, _ = contents[0].(map[string]any)
+	if item["blob"] != base64.StdEncoding.EncodeToString([]byte{1, 2, 3}) ||
+		item["mimeType"] != "application/octet-stream" {
+		t.Errorf("binary read %v", item)
+	}
+	// Template read uses the registered mimeType.
+	res = read("5", "test://t/9")
+	contents, _ = res["contents"].([]any)
+	item, _ = contents[0].(map[string]any)
+	if item["text"] != "read test://t/9" || item["mimeType"] != "text/markdown" {
+		t.Errorf("template read %v", item)
+	}
+	// A template without a reader and an unknown uri are invalid params.
+	if res = read("6", "test://dead/1"); res != nil {
+		t.Errorf("dead template returned %v", res)
+	}
+	if res = read("7", "test://nope"); res != nil {
+		t.Errorf("unknown uri returned %v", res)
+	}
+	// Subscribe and unsubscribe answer with empty results.
+	for _, method := range []string{"resources/subscribe", "resources/unsubscribe"} {
+		resp = unitRequest(t, s, "", map[string]any{
+			"jsonrpc": "2.0", "id": "8", "method": method,
+			"params": map[string]any{"uri": "test://text"},
+		})
+		res, _ = resp["result"].(map[string]any)
+		if res == nil || len(res) != 0 {
+			t.Errorf("%s result %v", method, resp)
+		}
+	}
+}
+
+func TestPromptMethods(t *testing.T) {
+	s := newUnitServer(t)
+	s.RegisterMcpPrompt(McpPrompt{
+		Name: "greet", Title: "G", Description: "greeting",
+		Arguments: []map[string]any{{"name": "who", "required": true}},
+		Render: func(a map[string]any) (map[string]any, error) {
+			who, _ := a["who"].(string)
+			return map[string]any{"description": "greeting", "messages": []map[string]any{
+				{"role": "user", "content": map[string]any{"type": "text", "text": "hi " + who}},
+			}}, nil
+		},
+	})
+	s.RegisterMcpPrompt(McpPrompt{
+		Name: "broken", Description: "d",
+		Render: func(a map[string]any) (map[string]any, error) { return nil, errors.New("render failed") },
+	})
+	s.RegisterMcpPrompt(McpPrompt{Name: "bare", Description: "no renderer"})
+	resp := unitRequest(t, s, "", map[string]any{"jsonrpc": "2.0", "id": "1", "method": "prompts/list"})
+	res, _ := resp["result"].(map[string]any)
+	prompts, _ := res["prompts"].([]any)
+	if len(prompts) != 3 {
+		t.Fatalf("prompts %v", res["prompts"])
+	}
+	first, _ := prompts[0].(map[string]any)
+	if first["name"] != "greet" || first["title"] != "G" || first["arguments"] == nil {
+		t.Errorf("prompt item %v", first)
+	}
+	bare, _ := prompts[2].(map[string]any)
+	if bare["title"] != nil || bare["arguments"] != nil {
+		t.Errorf("empty prompt fields leaked: %v", bare)
+	}
+	resp = unitRequest(t, s, "", map[string]any{
+		"jsonrpc": "2.0", "id": "2", "method": "prompts/get",
+		"params": map[string]any{"name": "greet", "arguments": map[string]any{"who": "amy"}},
+	})
+	res, _ = resp["result"].(map[string]any)
+	messages, _ := res["messages"].([]any)
+	msg, _ := messages[0].(map[string]any)
+	content, _ := msg["content"].(map[string]any)
+	if content["text"] != "hi amy" {
+		t.Errorf("rendered prompt %v", res)
+	}
+	// A failing renderer surfaces the message as a JSON-RPC error.
+	resp = unitRequest(t, s, "", map[string]any{
+		"jsonrpc": "2.0", "id": "3", "method": "prompts/get",
+		"params": map[string]any{"name": "broken"},
+	})
+	errObj, _ := resp["error"].(map[string]any)
+	if errObj == nil || errObj["message"] != "render failed" {
+		t.Errorf("render error %v", resp)
+	}
+	// Unknown names and prompts without a renderer are invalid params.
+	for _, name := range []string{"bare", "missing"} {
+		resp = unitRequest(t, s, "", map[string]any{
+			"jsonrpc": "2.0", "id": "4", "method": "prompts/get",
+			"params": map[string]any{"name": name},
+		})
+		errObj, _ = resp["error"].(map[string]any)
+		if errObj == nil || errObj["code"] != float64(common.InvalidParams) {
+			t.Errorf("prompt %s error %v", name, resp)
+		}
+	}
+}
+
+func TestCompletionAndLogging(t *testing.T) {
+	s := newUnitServer(t)
+	resp := unitRequest(t, s, "", map[string]any{
+		"jsonrpc": "2.0", "id": "1", "method": "completion/complete",
+		"params": map[string]any{
+			"ref":      map[string]any{"type": "ref/prompt", "name": "x"},
+			"argument": map[string]any{"name": "a", "value": ""},
+		},
+	})
+	res, _ := resp["result"].(map[string]any)
+	comp, _ := res["completion"].(map[string]any)
+	if comp == nil || comp["values"] == nil || comp["hasMore"] != false {
+		t.Errorf("completion %v", res)
+	}
+	resp = unitRequest(t, s, "", map[string]any{
+		"jsonrpc": "2.0", "id": "2", "method": "logging/setLevel",
+		"params": map[string]any{"level": "info"},
+	})
+	res, _ = resp["result"].(map[string]any)
+	if res == nil || len(res) != 0 {
+		t.Errorf("setLevel result %v", resp)
+	}
+}
+
+func TestCustomToolStream(t *testing.T) {
+	s := newUnitServer(t)
+	sid, _ := unitInitialize(t, s, "2025-11-25")
+	s.RegisterMcpTool(McpTool{
+		Name:        "stream_tool",
+		Description: "streams events",
+		Handler: func(ctx *McpContext, a map[string]any) (any, error) {
+			if ctx.ProtocolVersion() != "2025-11-25" {
+				t.Errorf("protocol version %q", ctx.ProtocolVersion())
+			}
+			ctx.Log("warning", "unit", "careful")
+			ctx.Progress(1, 2, "halfway")
+			return "done", nil
+		},
+	})
+	data, _ := json.Marshal(map[string]any{
+		"jsonrpc": "2.0", "id": "7", "method": "tools/call",
+		"params": map[string]any{
+			"name":      "stream_tool",
+			"arguments": map[string]any{},
+			"_meta":     map[string]any{"progressToken": "tok"},
+		},
+	})
+	rec := unitPost(t, s, string(data), map[string]string{McpSessionHeader: sid})
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/event-stream") {
+		t.Fatalf("content type %q body %s", ct, rec.Body)
+	}
+	body := rec.Body.String()
+	// SEP-1699 priming: the stream starts with a retry field frame.
+	if !strings.HasPrefix(body, "retry: 2000\n\n") {
+		t.Errorf("missing SSE priming retry frame: %s", body)
+	}
+	if !strings.Contains(body, "notifications/message") {
+		t.Errorf("log event missing in %s", body)
+	}
+	if !strings.Contains(body, `"progressToken":"tok"`) {
+		t.Errorf("progress event missing in %s", body)
+	}
+	if !strings.Contains(body, `"isError":false`) {
+		t.Errorf("final envelope missing in %s", body)
+	}
+}
+
+func TestCustomToolUnary(t *testing.T) {
+	s := newUnitServer(t)
+	s.RegisterMcpTool(McpTool{
+		Name: "unary_tool", Description: "json only",
+		Handler: func(ctx *McpContext, a map[string]any) (any, error) {
+			ctx.Progress(1, 2, "ignored") // no progressToken: stays silent
+			return map[string]any{"n": 4}, nil
+		},
+	})
+	resp := unitRequest(t, s, "", map[string]any{
+		"jsonrpc": "2.0", "id": "1", "method": "tools/call",
+		"params": map[string]any{"name": "unary_tool", "arguments": map[string]any{}},
+	})
+	res, _ := resp["result"].(map[string]any)
+	content, _ := res["content"].([]any)
+	item, _ := content[0].(map[string]any)
+	if item["text"] != `{"n":4}` {
+		t.Errorf("content %v", item["text"])
+	}
+	// Full CallToolResult maps pass through unchanged.
+	s.RegisterMcpTool(McpTool{
+		Name: "rich_tool", Description: "rich",
+		Handler: func(ctx *McpContext, a map[string]any) (any, error) {
+			return map[string]any{
+				"content": []map[string]any{{"type": "image", "data": "AAA=", "mimeType": "image/png"}},
+			}, nil
+		},
+	})
+	resp = unitRequest(t, s, "", map[string]any{
+		"jsonrpc": "2.0", "id": "2", "method": "tools/call",
+		"params": map[string]any{"name": "rich_tool", "arguments": map[string]any{}},
+	})
+	res, _ = resp["result"].(map[string]any)
+	content, _ = res["content"].([]any)
+	item, _ = content[0].(map[string]any)
+	if item["type"] != "image" || item["data"] != "AAA=" {
+		t.Errorf("passthrough %v", res)
+	}
+}
+
+func TestMcpContextRequest(t *testing.T) {
+	// A session is required for server-to-client requests.
+	if _, err := (&McpContext{}).Request("sampling/createMessage", nil, time.Second); err == nil {
+		t.Error("request without a session succeeded")
+	}
+	s := newUnitServer(t)
+	sid, _ := unitInitialize(t, s, "2025-11-25")
+	v, _ := s.Sessions.Load(sid)
+	sess := v.(*mcpSession)
+	rec := httptest.NewRecorder()
+	ctx := &McpContext{sess: sess, cw: &sseWriter{w: rec, sess: sess}, id: "1"}
+	done := make(chan struct{})
+	var (
+		res any
+		err error
+	)
+	go func() {
+		defer close(done)
+		res, err = ctx.Request("elicitation/create", map[string]any{"message": "hi"}, 5*time.Second)
+	}()
+	// Wait for the pending request to register, then answer it.
+	for i := 0; i < 500; i++ {
+		sess.mu.Lock()
+		_, ok := sess.pending["srv-1"]
+		sess.mu.Unlock()
+		if ok {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if !sess.deliverResponse("srv-1", map[string]any{"action": "accept"}, nil) {
+		t.Fatal("pending request not found")
+	}
+	<-done
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, _ := res.(map[string]any)
+	if out["action"] != "accept" {
+		t.Errorf("result %v", res)
+	}
+	// The request frame was written to the stream.
+	if !strings.Contains(rec.Body.String(), `"method":"elicitation/create"`) {
+		t.Errorf("request event missing in %s", rec.Body)
+	}
+	// Without a client answer the call times out.
+	ctx2 := &McpContext{sess: sess, cw: &sseWriter{w: httptest.NewRecorder(), sess: sess}, id: "2"}
+	if _, err := ctx2.Request("sampling/createMessage", nil, 50*time.Millisecond); err == nil {
+		t.Error("timeout did not produce an error")
+	}
+}
+
+func TestEndStreamSendResultReplay(t *testing.T) {
+	s := newUnitServer(t)
+	sid, _ := unitInitialize(t, s, "2025-11-25")
+	s.RegisterMcpTool(McpTool{
+		Name:        "reconnect_tool",
+		Description: "ends the stream early",
+		Handler: func(ctx *McpContext, a map[string]any) (any, error) {
+			ctx.Log("info", "unit", "started")
+			ctx.EndStream()
+			ctx.SendResult(map[string]any{
+				"content": []map[string]any{{"type": "text", "text": "late result"}},
+				"isError": false,
+			})
+			return nil, nil
+		},
+	})
+	data, _ := json.Marshal(map[string]any{
+		"jsonrpc": "2.0", "id": "8", "method": "tools/call",
+		"params": map[string]any{"name": "reconnect_tool", "arguments": map[string]any{}},
+	})
+	rec := unitPost(t, s, string(data), map[string]string{McpSessionHeader: sid})
+	body := rec.Body.String()
+	if !strings.Contains(body, "notifications/message") {
+		t.Errorf("log event missing in %s", body)
+	}
+	if strings.Contains(body, "late result") {
+		t.Error("result written to the ended stream")
+	}
+	v, _ := s.Sessions.Load(sid)
+	sess := v.(*mcpSession)
+	sess.mu.Lock()
+	if len(sess.ring) == 0 {
+		sess.mu.Unlock()
+		t.Fatal("final result not recorded for replay")
+	}
+	lastID := sess.ring[len(sess.ring)-1].ID
+	sess.mu.Unlock()
+	// Reconnecting with Last-Event-ID replays the final result.
+	req := httptest.NewRequest(http.MethodGet, McpEndpoint, nil)
+	req.Header.Set(McpSessionHeader, sid)
+	req.Header.Set(McpLastEventHeader, fmt.Sprint(lastID-1))
+	reqCtx, cancel := context.WithCancel(req.Context())
+	req = req.WithContext(reqCtx)
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+	}()
+	rec = httptest.NewRecorder()
+	s.handleGet(rec, req)
+	if !strings.Contains(rec.Body.String(), "late result") {
+		t.Errorf("replay missing final result: %s", rec.Body)
 	}
 }

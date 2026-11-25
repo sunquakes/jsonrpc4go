@@ -36,6 +36,18 @@
 - Added `server.StreamableHttpOptions.AllowedHosts`, an optional `Host`
   header allow-list that rejects other hosts with `421` to prevent DNS
   rebinding attacks against localhost servers.
+- Added full MCP conformance support for protocol revision `2025-11-25`:
+  server-to-client requests (`sampling/createMessage`, `elicitation/create`),
+  `resources/list|read|templates/list|subscribe|unsubscribe`,
+  `prompts/list|get`, `completion/complete`, `logging/setLevel`, log and
+  progress notifications, SSE priming events with `retry` and
+  Last-Event-ID resumption, and JSON Schema 2020-12 `inputSchema`
+  preservation.
+- Added `server.McpTool` with `RegisterMcpTool` for tools with an exact name,
+  hand-written `inputSchema` and a handler receiving a `server.McpContext`
+  (`Log`, `Progress`, `Request`, `EndStream`, `SendResult`), plus
+  `RegisterMcpResource`, `RegisterMcpResourceTemplate` and
+  `RegisterMcpPrompt`.
 - Added `examples/streamable-http` server and client programs.
 - Added an MCP conformance CI job using
   `modelcontextprotocol/conformance` with a documented
