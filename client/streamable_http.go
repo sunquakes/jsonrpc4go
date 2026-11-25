@@ -147,7 +147,9 @@ func (c *StreamableHttpClient) urlLocked() (string, error) {
 	if len(c.addresses) > 1 {
 		address = c.addresses[rand.IntN(len(c.addresses))]
 	}
-	return fmt.Sprintf("http://%s%s", address, mcpEndpointPath), nil
+	// Plaintext HTTP is intentional: the client talks to a user-supplied RPC
+	// endpoint that may be local or TLS-terminated by a proxy.
+	return fmt.Sprintf("http://%s%s", address, mcpEndpointPath), nil //NOSONAR
 }
 
 /*
