@@ -2,8 +2,10 @@ package server
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -32,9 +34,9 @@ const (
 )
 
 // mcpSupportedVersions lists the MCP protocol versions this server accepts.
-var mcpSupportedVersions = []string{"2024-11-05", "2025-03-26", "2025-06-18"}
+var mcpSupportedVersions = []string{"2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"}
 
-const mcpLatestVersion = "2025-06-18"
+const mcpLatestVersion = "2025-11-25"
 
 /*
  * StreamableHttp represents the streamable HTTP protocol implementation.
@@ -77,6 +79,14 @@ type mcpSession struct {
 	nextEventID int
 	ring        []sseEvent
 	subscribers map[chan sseEvent]struct{}
+	nextReqID   int
+	pending     map[string]chan mcpReply
+}
+
+// mcpReply carries one client answer to a server-initiated request.
+type mcpReply struct {
+	result any
+	err    error
 }
 
 func newMcpSession(protocolVersion string) *mcpSession {
@@ -88,7 +98,53 @@ func newMcpSession(protocolVersion string) *mcpSession {
 		id:              hex.EncodeToString(buf),
 		protocolVersion: protocolVersion,
 		subscribers:     make(map[chan sseEvent]struct{}),
+		pending:         make(map[string]chan mcpReply),
 	}
+}
+
+// nextRequestID allocates a server-side JSON-RPC request id.
+func (sess *mcpSession) nextRequestID() string {
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+	sess.nextReqID++
+	return fmt.Sprintf("srv-%d", sess.nextReqID)
+}
+
+// beginRequest registers a pending server-to-client request.
+func (sess *mcpSession) beginRequest(id string) chan mcpReply {
+	ch := make(chan mcpReply, 1)
+	sess.mu.Lock()
+	sess.pending[id] = ch
+	sess.mu.Unlock()
+	return ch
+}
+
+// endRequest removes a pending server-to-client request.
+func (sess *mcpSession) endRequest(id string) {
+	sess.mu.Lock()
+	delete(sess.pending, id)
+	sess.mu.Unlock()
+}
+
+// deliverResponse routes a client JSON-RPC response to its pending request.
+func (sess *mcpSession) deliverResponse(id string, result any, errObj any) bool {
+	sess.mu.Lock()
+	ch, ok := sess.pending[id]
+	sess.mu.Unlock()
+	if !ok {
+		return false
+	}
+	reply := mcpReply{result: result}
+	if errObj != nil {
+		if em, ok := errObj.(map[string]any); ok {
+			msg, _ := em["message"].(string)
+			reply.err = errors.New(msg)
+		} else {
+			reply.err = errors.New("mcp request failed")
+		}
+	}
+	ch <- reply
+	return true
 }
 
 func (sess *mcpSession) nextID() int {
@@ -158,6 +214,117 @@ type StreamableHttpServer struct {
 	Event     chan int
 	Discovery discovery.Driver
 	Sessions  sync.Map
+
+	mcpLock      sync.Mutex
+	mcpTools     map[string]McpTool
+	mcpToolOrder []string
+	mcpResources []McpResource
+	mcpTemplates []McpResourceTemplate
+	mcpPrompts   map[string]McpPrompt
+	mcpPromptOrd []string
+}
+
+/*
+ * McpTool is a manually registered MCP tool. Its handler receives an
+ * McpContext that can emit progress/log notifications and send
+ * server-to-client requests (sampling/createMessage, elicitation/create).
+ * The handler result is wrapped as a CallToolResult; returning a map that
+ * already contains a "content" key passes it through unchanged.
+ */
+type McpTool struct {
+	Name        string
+	Description string
+	InputSchema map[string]any
+	Handler     func(ctx *McpContext, arguments map[string]any) (any, error)
+}
+
+/*
+ * McpResource is a static MCP resource served by resources/list and
+ * resources/read. Exactly one of Text or Blob should carry the payload.
+ */
+type McpResource struct {
+	URI         string
+	Name        string
+	Title       string
+	Description string
+	MimeType    string
+	Text        string
+	Blob        []byte
+}
+
+/*
+ * McpResourceTemplate serves URIs matching a {param} template pattern.
+ * Read receives the concrete requested URI.
+ */
+type McpResourceTemplate struct {
+	URITemplate string
+	Name        string
+	Title       string
+	Description string
+	MimeType    string
+	Read        func(uri string) (text string, blob []byte, ok bool)
+}
+
+/*
+ * McpPrompt is a manually registered MCP prompt served by prompts/list and
+ * prompts/get. Render returns the GetPromptResult map.
+ */
+type McpPrompt struct {
+	Name        string
+	Title       string
+	Description string
+	Arguments   []map[string]any
+	Render      func(arguments map[string]any) (map[string]any, error)
+}
+
+/*
+ * RegisterMcpTool registers an MCP tool with an exact name and schema,
+ * bypassing the Service_Method reflection publishing.
+ */
+func (s *StreamableHttpServer) RegisterMcpTool(tool McpTool) {
+	s.mcpLock.Lock()
+	defer s.mcpLock.Unlock()
+	if s.mcpTools == nil {
+		s.mcpTools = make(map[string]McpTool)
+	}
+	if _, exists := s.mcpTools[tool.Name]; !exists {
+		s.mcpToolOrder = append(s.mcpToolOrder, tool.Name)
+	}
+	s.mcpTools[tool.Name] = tool
+}
+
+/*
+ * RegisterMcpResource publishes a static resource through resources/list.
+ */
+func (s *StreamableHttpServer) RegisterMcpResource(r McpResource) {
+	s.mcpLock.Lock()
+	defer s.mcpLock.Unlock()
+	s.mcpResources = append(s.mcpResources, r)
+}
+
+/*
+ * RegisterMcpResourceTemplate publishes a resource template through
+ * resources/templates/list and serves matching URIs.
+ */
+func (s *StreamableHttpServer) RegisterMcpResourceTemplate(t McpResourceTemplate) {
+	s.mcpLock.Lock()
+	defer s.mcpLock.Unlock()
+	s.mcpTemplates = append(s.mcpTemplates, t)
+}
+
+/*
+ * RegisterMcpPrompt publishes a prompt through prompts/list and prompts/get.
+ */
+func (s *StreamableHttpServer) RegisterMcpPrompt(p McpPrompt) {
+	s.mcpLock.Lock()
+	defer s.mcpLock.Unlock()
+	if s.mcpPrompts == nil {
+		s.mcpPrompts = make(map[string]McpPrompt)
+	}
+	if _, exists := s.mcpPrompts[p.Name]; !exists {
+		s.mcpPromptOrd = append(s.mcpPromptOrd, p.Name)
+	}
+	s.mcpPrompts[p.Name] = p
 }
 
 /*
@@ -173,9 +340,11 @@ func (p *StreamableHttp) NewServer() Server {
 			Hooks:       common.Hooks{},
 			RateLimiter: nil,
 		},
-		Options:   StreamableHttpOptions{},
-		Event:     make(chan int, 1),
-		Discovery: nil,
+		Options:    StreamableHttpOptions{},
+		Event:      make(chan int, 1),
+		Discovery:  nil,
+		mcpTools:   make(map[string]McpTool),
+		mcpPrompts: make(map[string]McpPrompt),
 	}
 }
 
@@ -413,6 +582,14 @@ func (s *StreamableHttpServer) handlePost(w http.ResponseWriter, r *http.Request
  */
 func (s *StreamableHttpServer) handleSingle(w http.ResponseWriter, r *http.Request, sess *mcpSession, req map[string]any) {
 	method, _ := req["method"].(string)
+	if method == "" {
+		// A JSON-RPC response answering a server-initiated request.
+		if sess != nil {
+			sess.deliverResponse(fmt.Sprintf("%v", req["id"]), req["result"], req["error"])
+		}
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
 	switch {
 	case method == "initialize":
 		s.handleInitialize(w, r, req)
@@ -422,6 +599,24 @@ func (s *StreamableHttpServer) handleSingle(w http.ResponseWriter, r *http.Reque
 		s.respondJSON(w, sess, common.S(req["id"], common.JsonRpc, map[string]any{"tools": s.listTools()}))
 	case method == "tools/call":
 		s.handleToolsCall(w, r, sess, req)
+	case method == "resources/list":
+		s.respondJSON(w, sess, common.S(req["id"], common.JsonRpc, map[string]any{"resources": s.listResources()}))
+	case method == "resources/templates/list":
+		s.respondJSON(w, sess, common.S(req["id"], common.JsonRpc, map[string]any{"resourceTemplates": s.listResourceTemplates()}))
+	case method == "resources/read":
+		s.handleResourceRead(w, sess, req)
+	case method == "resources/subscribe", method == "resources/unsubscribe":
+		s.respondJSON(w, sess, common.S(req["id"], common.JsonRpc, map[string]any{}))
+	case method == "prompts/list":
+		s.respondJSON(w, sess, common.S(req["id"], common.JsonRpc, map[string]any{"prompts": s.listPrompts()}))
+	case method == "prompts/get":
+		s.handlePromptGet(w, sess, req)
+	case method == "completion/complete":
+		s.respondJSON(w, sess, common.S(req["id"], common.JsonRpc, map[string]any{
+			"completion": map[string]any{"values": []string{}, "total": 0, "hasMore": false},
+		}))
+	case method == "logging/setLevel":
+		s.respondJSON(w, sess, common.S(req["id"], common.JsonRpc, map[string]any{}))
 	case strings.HasPrefix(method, "notifications/"):
 		w.WriteHeader(http.StatusAccepted)
 	default:
@@ -455,8 +650,14 @@ func (s *StreamableHttpServer) handleInitialize(w http.ResponseWriter, r *http.R
 	w.Header().Set(McpProtocolHeader, sess.protocolVersion)
 	result := map[string]any{
 		"protocolVersion": sess.protocolVersion,
-		"capabilities":    map[string]any{"tools": map[string]any{}},
-		"serverInfo":      map[string]any{"name": mcpServerInfoName, "version": mcpServerInfoVersion},
+		"capabilities": map[string]any{
+			"tools":       map[string]any{},
+			"resources":   map[string]any{"subscribe": true},
+			"prompts":     map[string]any{},
+			"logging":     map[string]any{},
+			"completions": map[string]any{},
+		},
+		"serverInfo": map[string]any{"name": mcpServerInfoName, "version": mcpServerInfoVersion},
 	}
 	s.respondJSON(w, nil, common.S(req["id"], common.JsonRpc, result))
 }
@@ -482,12 +683,6 @@ func (s *StreamableHttpServer) handleGet(w http.ResponseWriter, r *http.Request)
 	sess := v.(*mcpSession)
 	cw := &sseWriter{w: w, sess: sess}
 	cw.start()
-	// Flush an initial comment frame so clients know the stream is live.
-	_, _ = w.Write([]byte(": ok\n\n"))
-	if f, ok := w.(http.Flusher); ok {
-		f.Flush()
-	}
-
 	lastID := 0
 	if raw := r.Header.Get(McpLastEventHeader); raw != "" {
 		lastID, _ = strconv.Atoi(raw)
@@ -620,6 +815,12 @@ func (e *sseWriter) start() {
 	}
 	e.w.WriteHeader(http.StatusOK)
 	e.started = true
+	// SEP-1699: advertise the reconnect interval and emit an id-bearing
+	// priming event so clients can resume with Last-Event-ID.
+	fmt.Fprint(e.w, "retry: 2000\n\n")
+	if e.sess != nil {
+		fmt.Fprintf(e.w, "id: %d\ndata: \n\n", e.sess.nextID())
+	}
 	e.flush()
 }
 
@@ -688,6 +889,20 @@ func (s *StreamableHttpServer) listTools() []map[string]any {
 		}
 		return true
 	})
+	s.mcpLock.Lock()
+	for _, name := range s.mcpToolOrder {
+		t := s.mcpTools[name]
+		schema := t.InputSchema
+		if schema == nil {
+			schema = map[string]any{"type": "object", "properties": map[string]any{}, "required": []string{}}
+		}
+		tools = append(tools, map[string]any{
+			"name":        t.Name,
+			"description": t.Description,
+			"inputSchema": schema,
+		})
+	}
+	s.mcpLock.Unlock()
 	return tools
 }
 
@@ -792,6 +1007,11 @@ func (s *StreamableHttpServer) handleToolsCall(w http.ResponseWriter, r *http.Re
 	meta, _ := params["_meta"].(map[string]any)
 	token, hasToken := meta["progressToken"]
 
+	if tool, ok := s.mcpTool(name); ok {
+		s.callMcpTool(w, sess, id, tool, token, arguments)
+		return
+	}
+
 	sp := strings.SplitN(name, "_", 2)
 	if len(sp) != 2 {
 		s.respondJSON(w, sess, common.E(id, common.JsonRpc, common.InvalidParams))
@@ -843,6 +1063,370 @@ func (s *StreamableHttpServer) handleToolsCall(w http.ResponseWriter, r *http.Re
 		return
 	}
 	s.respondJSON(w, sess, toolResp)
+}
+
+/*
+ * mcpTool returns a manually registered tool by exact name.
+ */
+func (s *StreamableHttpServer) mcpTool(name string) (McpTool, bool) {
+	s.mcpLock.Lock()
+	defer s.mcpLock.Unlock()
+	t, ok := s.mcpTools[name]
+	return t, ok
+}
+
+/*
+ * callMcpTool runs a custom tool handler. The handler may emit SSE events
+ * (progress, logs, server-to-client requests) through the McpContext; the
+ * final CallToolResult is delivered as JSON when nothing was streamed, or as
+ * the last SSE event otherwise.
+ */
+func (s *StreamableHttpServer) callMcpTool(w http.ResponseWriter, sess *mcpSession, id any, tool McpTool, token any, arguments map[string]any) {
+	cw := &sseWriter{w: w, sess: sess}
+	ctx := &McpContext{sess: sess, cw: cw, id: id, token: token}
+	out, err := tool.Handler(ctx, arguments)
+	if ctx.ended {
+		// The handler closed the stream; the response arrives via SendResult.
+		return
+	}
+	resp := mcpToolResponse(id, out, err)
+	if cw.started {
+		cw.writeJSON(resp)
+		return
+	}
+	s.respondJSON(w, sess, resp)
+}
+
+/*
+ * mcpToolResponse converts a custom handler result into a JSON-RPC response
+ * carrying a CallToolResult. Maps that already contain a "content" key pass
+ * through unchanged so handlers can build full CallToolResults.
+ */
+func mcpToolResponse(id any, out any, err error) any {
+	if err != nil {
+		return common.S(id, common.JsonRpc, map[string]any{
+			"content": []map[string]any{{"type": "text", "text": err.Error()}},
+			"isError": true,
+		})
+	}
+	if m, ok := out.(map[string]any); ok {
+		if _, has := m["content"]; has {
+			return common.S(id, common.JsonRpc, m)
+		}
+	}
+	text, mErr := json.Marshal(out)
+	if mErr != nil {
+		text = []byte(fmt.Sprintf("%v", out))
+	}
+	return common.S(id, common.JsonRpc, map[string]any{
+		"content": []map[string]any{{"type": "text", "text": string(text)}},
+		"isError": false,
+	})
+}
+
+/*
+ * McpContext gives custom tool handlers access to the live MCP stream:
+ * notifications, server-to-client requests and stream control.
+ */
+type McpContext struct {
+	sess  *mcpSession
+	cw    *sseWriter
+	id    any
+	token any
+	ended bool
+}
+
+// ProtocolVersion returns the negotiated MCP protocol version.
+func (c *McpContext) ProtocolVersion() string {
+	if c.sess == nil {
+		return mcpLatestVersion
+	}
+	return c.sess.protocolVersion
+}
+
+func (c *McpContext) notify(method string, params map[string]any) error {
+	data, err := json.Marshal(map[string]any{
+		"jsonrpc": common.JsonRpc,
+		"method":  method,
+		"params":  params,
+	})
+	if err != nil {
+		return err
+	}
+	return c.cw.event(data)
+}
+
+/*
+ * Log emits a notifications/message event on the current stream.
+ */
+func (c *McpContext) Log(level string, logger string, data any) error {
+	params := map[string]any{"level": level, "data": data}
+	if logger != "" {
+		params["logger"] = logger
+	}
+	return c.notify("notifications/message", params)
+}
+
+/*
+ * Progress emits a notifications/progress event when the client supplied a
+ * progressToken. Zero total/message are omitted.
+ */
+func (c *McpContext) Progress(progress float64, total float64, message string) error {
+	if c.token == nil {
+		return nil
+	}
+	params := map[string]any{"progressToken": c.token, "progress": progress}
+	if total > 0 {
+		params["total"] = total
+	}
+	if message != "" {
+		params["message"] = message
+	}
+	return c.notify("notifications/progress", params)
+}
+
+/*
+ * Request sends a server-to-client JSON-RPC request (e.g.
+ * sampling/createMessage or elicitation/create) over the live stream and
+ * waits for the client's response.
+ */
+func (c *McpContext) Request(method string, params map[string]any, timeout time.Duration) (any, error) {
+	if c.sess == nil {
+		return nil, errors.New("mcp: server-to-client requests require a session")
+	}
+	rid := c.sess.nextRequestID()
+	ch := c.sess.beginRequest(rid)
+	defer c.sess.endRequest(rid)
+	data, err := json.Marshal(map[string]any{
+		"jsonrpc": common.JsonRpc,
+		"id":      rid,
+		"method":  method,
+		"params":  params,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := c.cw.event(data); err != nil {
+		return nil, err
+	}
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+	select {
+	case reply := <-ch:
+		return reply.result, reply.err
+	case <-time.After(timeout):
+		return nil, errors.New("mcp: timed out waiting for client response")
+	}
+}
+
+/*
+ * EndStream closes the response stream without a final result. The handler
+ * (typically in a goroutine) must later call SendResult so reconnecting
+ * clients receive it through Last-Event-ID replay.
+ */
+func (c *McpContext) EndStream() {
+	c.ended = true
+}
+
+/*
+ * SendResult records the final response for a stream ended with EndStream,
+ * making it available to clients reconnecting with Last-Event-ID.
+ */
+func (c *McpContext) SendResult(result any) {
+	if c.sess == nil {
+		return
+	}
+	data, err := json.Marshal(common.S(c.id, common.JsonRpc, result))
+	if err != nil {
+		return
+	}
+	c.sess.record(sseEvent{ID: c.sess.nextID(), Data: data})
+}
+
+/*
+ * listResources returns the registered static resources.
+ */
+func (s *StreamableHttpServer) listResources() []map[string]any {
+	s.mcpLock.Lock()
+	defer s.mcpLock.Unlock()
+	out := make([]map[string]any, 0, len(s.mcpResources))
+	for _, r := range s.mcpResources {
+		item := map[string]any{"uri": r.URI, "name": r.Name}
+		if r.Title != "" {
+			item["title"] = r.Title
+		}
+		if r.Description != "" {
+			item["description"] = r.Description
+		}
+		if r.MimeType != "" {
+			item["mimeType"] = r.MimeType
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+/*
+ * listResourceTemplates returns the registered resource templates.
+ */
+func (s *StreamableHttpServer) listResourceTemplates() []map[string]any {
+	s.mcpLock.Lock()
+	defer s.mcpLock.Unlock()
+	out := make([]map[string]any, 0, len(s.mcpTemplates))
+	for _, t := range s.mcpTemplates {
+		item := map[string]any{"uriTemplate": t.URITemplate, "name": t.Name}
+		if t.Title != "" {
+			item["title"] = t.Title
+		}
+		if t.Description != "" {
+			item["description"] = t.Description
+		}
+		if t.MimeType != "" {
+			item["mimeType"] = t.MimeType
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+/*
+ * matchResourceTemplate reports whether uri matches a template such as
+ * "test://template/{id}/data": every literal segment must match and each
+ * {param} segment accepts any non-empty segment.
+ */
+func matchResourceTemplate(tmpl, uri string) bool {
+	ts := strings.Split(tmpl, "/")
+	us := strings.Split(uri, "/")
+	if len(ts) != len(us) {
+		return false
+	}
+	for k, seg := range ts {
+		if strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}") {
+			if us[k] == "" {
+				return false
+			}
+			continue
+		}
+		if seg != us[k] {
+			return false
+		}
+	}
+	return true
+}
+
+/*
+ * handleResourceRead resolves resources/read against registered resources
+ * and templates.
+ */
+func (s *StreamableHttpServer) handleResourceRead(w http.ResponseWriter, sess *mcpSession, req map[string]any) {
+	params, _ := req["params"].(map[string]any)
+	uri, _ := params["uri"].(string)
+	s.mcpLock.Lock()
+	var (
+		text  string
+		blob  []byte
+		mime  string
+		found bool
+	)
+	for _, r := range s.mcpResources {
+		if r.URI == uri {
+			text, blob, mime, found = r.Text, r.Blob, r.MimeType, true
+			break
+		}
+	}
+	var tmpl *McpResourceTemplate
+	if !found {
+		for k := range s.mcpTemplates {
+			if matchResourceTemplate(s.mcpTemplates[k].URITemplate, uri) {
+				tmpl = &s.mcpTemplates[k]
+				break
+			}
+		}
+	}
+	s.mcpLock.Unlock()
+	if !found && tmpl == nil {
+		s.respondJSON(w, sess, common.E(req["id"], common.JsonRpc, common.InvalidParams))
+		return
+	}
+	if tmpl != nil {
+		if tmpl.Read == nil {
+			s.respondJSON(w, sess, common.E(req["id"], common.JsonRpc, common.InvalidParams))
+			return
+		}
+		var ok bool
+		text, blob, ok = tmpl.Read(uri)
+		mime = tmpl.MimeType
+		if !ok {
+			s.respondJSON(w, sess, common.E(req["id"], common.JsonRpc, common.InvalidParams))
+			return
+		}
+	}
+	if mime == "" {
+		mime = resourceMimeType(text, blob)
+	}
+	item := map[string]any{"uri": uri, "mimeType": mime}
+	if len(blob) > 0 {
+		item["blob"] = base64.StdEncoding.EncodeToString(blob)
+	} else {
+		item["text"] = text
+	}
+	s.respondJSON(w, sess, common.S(req["id"], common.JsonRpc, map[string]any{
+		"contents": []map[string]any{item},
+	}))
+}
+
+func resourceMimeType(text string, blob []byte) string {
+	if len(blob) > 0 {
+		return "application/octet-stream"
+	}
+	return "text/plain"
+}
+
+/*
+ * listPrompts returns the registered prompts.
+ */
+func (s *StreamableHttpServer) listPrompts() []map[string]any {
+	s.mcpLock.Lock()
+	defer s.mcpLock.Unlock()
+	out := make([]map[string]any, 0, len(s.mcpPromptOrd))
+	for _, name := range s.mcpPromptOrd {
+		p := s.mcpPrompts[name]
+		item := map[string]any{"name": p.Name}
+		if p.Title != "" {
+			item["title"] = p.Title
+		}
+		if p.Description != "" {
+			item["description"] = p.Description
+		}
+		if len(p.Arguments) > 0 {
+			item["arguments"] = p.Arguments
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+/*
+ * handlePromptGet renders a registered prompt.
+ */
+func (s *StreamableHttpServer) handlePromptGet(w http.ResponseWriter, sess *mcpSession, req map[string]any) {
+	params, _ := req["params"].(map[string]any)
+	name, _ := params["name"].(string)
+	arguments, _ := params["arguments"].(map[string]any)
+	s.mcpLock.Lock()
+	p, ok := s.mcpPrompts[name]
+	s.mcpLock.Unlock()
+	if !ok || p.Render == nil {
+		s.respondJSON(w, sess, common.E(req["id"], common.JsonRpc, common.InvalidParams))
+		return
+	}
+	result, err := p.Render(arguments)
+	if err != nil {
+		s.respondJSON(w, sess, common.CE(req["id"], common.JsonRpc, err.Error()))
+		return
+	}
+	s.respondJSON(w, sess, common.S(req["id"], common.JsonRpc, result))
 }
 
 /*

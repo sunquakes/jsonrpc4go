@@ -27,7 +27,7 @@ follows the [MCP Streamable HTTP transport](https://modelcontextprotocol.io/spec
 so any MCP agent client can connect directly:
 
 - POST returns unary results as JSON and streaming results as Server-Sent Events (SSE).
-- `Mcp-Session-Id` sessions, `Mcp-Protocol-Version` negotiation (`2024-11-05` / `2025-03-26` / `2025-06-18`).
+- `Mcp-Session-Id` sessions, `Mcp-Protocol-Version` negotiation (`2024-11-05` / `2025-03-26` / `2025-06-18` / `2025-11-25`).
 - `Last-Event-ID` replay, a GET server→client SSE channel, `DELETE` to end a session.
 - Notifications are answered with `202`; a browser `Origin` allow-list is enforced with `403`.
 - An optional `Host` allow-list (`AllowedHosts`) rejects other hosts with `421`,
@@ -80,13 +80,14 @@ values, _ := c.Call("Count", 2) // [1, 2]
   JSON-RPC dispatch keeps working unchanged.
 - Conformance: the CI runs the official
   [`modelcontextprotocol/conformance`](https://github.com/modelcontextprotocol/conformance)
-  server suite against the example server; known gaps (resources, prompts,
-  logging, completion, elicitation and the suite's fixture tools) are listed in
-  `conformance-baseline.yml`, so any new regression fails the build.
-- **Note**: the suite defaults to the newest spec revision, which is stricter
-  than the protocol versions this server negotiates (`2024-11-05` …
-  `2025-06-18`). Pin the conformance tool to a matching spec version to shrink
-  the baseline over time.
+  server suite against the example server and passes **all active scenarios**
+  (protocol revisions up to `2025-11-25`): initialize/ping, tools
+  (list/call/progress), resources (list/read/templates/subscribe), prompts,
+  completion, logging, server-to-client sampling and elicitation (SEP-1034
+  defaults, SEP-1330 enums), JSON Schema 2020-12 preservation, SSE priming and
+  Last-Event-ID resumption, and DNS-rebinding protection.
+  `conformance-baseline.yml` is intentionally empty; any new gap must be added
+  there deliberately or the build fails.
 
 ## 🧰 Installing
 ```

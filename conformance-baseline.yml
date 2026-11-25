@@ -1,38 +1,5 @@
 # Known MCP conformance failures for jsonrpc4go streamable HTTP.
-# CI passes while ONLY these fail; new regressions or stale entries fail the job.
-# The tools-call-* scenarios require fixture tools (test_simple_text, ...)
-# that only a purpose-built test server exposes; jsonrpc4go publishes user
-# services instead. Everything else covers MCP features the library does not
-# implement (no resources, prompts, logging, completion or elicitation).
-server:
-  # Logging capability is not implemented.
-  - logging-set-level
-  # Completion capability is not implemented.
-  - completion-complete
-  # Scenario fixture tools are not part of a general service server.
-  - tools-call-simple-text
-  - tools-call-image
-  - tools-call-audio
-  - tools-call-embedded-resource
-  - tools-call-mixed-content
-  - tools-call-with-logging
-  - tools-call-error
-  - tools-call-with-progress
-  - tools-call-sampling
-  - tools-call-elicitation
-  # Elicitation (server to client requests) is not implemented.
-  - elicitation-sep1034-defaults
-  - elicitation-sep1330-enums
-  # Resources capability is not implemented.
-  - resources-list
-  - resources-read-text
-  - resources-read-binary
-  - resources-templates-read
-  - resources-subscribe
-  - resources-unsubscribe
-  # Prompts capability is not implemented.
-  - prompts-list
-  - prompts-get-simple
-  - prompts-get-with-args
-  - prompts-get-embedded-resource
-  - prompts-get-with-image
+# The active suite (protocol revisions up to 2025-11-25) passes with zero
+# failures, so this list is empty. Keep the file and the CI flag: any future
+# gap must be added here deliberately, otherwise the job fails.
+server: []
