@@ -100,7 +100,7 @@ jobs:
         timeout 15 bash -c 'until curl -s -o /dev/null http://127.0.0.1:3001/mcp; do sleep 0.5; done'
 
     - name: Run MCP conformance suite
-      uses: modelcontextprotocol/conformance@v0.1.11
+      uses: modelcontextprotocol/conformance@bd1a195ab439841b58d90face7c96333d227e098 # v0.1.11
       with:
         mode: server
         url: http://127.0.0.1:3001/mcp
