@@ -79,3 +79,29 @@ jobs:
     - name: Fuzz test
       run: |
         go test -fuzz=FuzzParseRequestBody -fuzztime=10s -run=^$ ./test
+
+  mcp-conformance:
+    name: MCP conformance
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Build example streamable HTTP server
+      run: go build -o /tmp/mcp-example-server ./examples/streamable-http/server
+
+    - name: Start server
+      run: |
+        /tmp/mcp-example-server -port 3001 -hosts localhost,127.0.0.1 &
+        timeout 15 bash -c 'until curl -s -o /dev/null http://127.0.0.1:3001/mcp; do sleep 0.5; done'
+
+    - name: Run MCP conformance suite
+      uses: modelcontextprotocol/conformance@v0.1.11
+      with:
+        mode: server
+        url: http://127.0.0.1:3001/mcp
+        expected-failures: ./conformance-baseline.yml

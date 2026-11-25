@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"reflect"
 	"sort"
@@ -47,9 +48,13 @@ type StreamableHttp struct {
  * StreamableHttpOptions represents the options for the streamable HTTP server
  * @property AllowedOrigins - Browser origins accepted in the Origin header;
  * an empty list allows every origin
+ * @property AllowedHosts - Host names accepted in the Host header (with or
+ * without port); an empty list allows every host. Set it on localhost-only
+ * servers to prevent DNS rebinding attacks.
  */
 type StreamableHttpOptions struct {
 	AllowedOrigins []string
+	AllowedHosts   []string
 }
 
 /*
@@ -300,9 +305,38 @@ func (s *StreamableHttpServer) checkOrigin(r *http.Request) bool {
 }
 
 /*
+ * checkHost rejects requests whose Host header is outside the allow list.
+ * Disabled when AllowedHosts is empty.
+ */
+func (s *StreamableHttpServer) checkHost(r *http.Request) bool {
+	if len(s.Options.AllowedHosts) == 0 {
+		return true
+	}
+	host := r.Host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.ToLower(strings.Trim(host, "[]"))
+	for _, allowed := range s.Options.AllowedHosts {
+		a := strings.ToLower(strings.TrimSpace(allowed))
+		if h, _, err := net.SplitHostPort(a); err == nil {
+			a = h
+		}
+		if host == strings.Trim(a, "[]") {
+			return true
+		}
+	}
+	return false
+}
+
+/*
  * handleMcp routes one request on the /mcp endpoint.
  */
 func (s *StreamableHttpServer) handleMcp(w http.ResponseWriter, r *http.Request) {
+	if !s.checkHost(r) {
+		http.Error(w, "forbidden host", http.StatusMisdirectedRequest)
+		return
+	}
 	if !s.checkOrigin(r) {
 		http.Error(w, "forbidden origin", http.StatusForbidden)
 		return
@@ -448,6 +482,11 @@ func (s *StreamableHttpServer) handleGet(w http.ResponseWriter, r *http.Request)
 	sess := v.(*mcpSession)
 	cw := &sseWriter{w: w, sess: sess}
 	cw.start()
+	// Flush an initial comment frame so clients know the stream is live.
+	_, _ = w.Write([]byte(": ok\n\n"))
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
 
 	lastID := 0
 	if raw := r.Header.Get(McpLastEventHeader); raw != "" {

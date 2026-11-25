@@ -10,6 +10,10 @@
 - **Breaking**: `client.Client.Call` is now `Call(method string, args ...any)
   (any, error)`; `BatchAppend(method string, args ...any)` returns nothing and
   `BatchCall()` returns `([]BatchResult, error)`.
+- **Breaking**: `common.Request.Id`, `common.SuccessResponse.Id` and
+  `common.ErrorResponse.Id` are `any` instead of `string` so numeric
+  JSON-RPC ids (sent by the MCP SDK) round-trip with their original type
+  instead of panicking.
 
 ### Added
 - Added `client.Client.Notify(method string, args ...any) error` for
@@ -29,6 +33,13 @@
 - Added `client.Streamer` with `Stream(method string, args ...any)
   iter.Seq2[any, error]` and the generic helper
   `jsonrpc4go.Stream[T](c, method, args...) iter.Seq2[T, error]`.
+- Added `server.StreamableHttpOptions.AllowedHosts`, an optional `Host`
+  header allow-list that rejects other hosts with `421` to prevent DNS
+  rebinding attacks against localhost servers.
+- Added `examples/streamable-http` server and client programs.
+- Added an MCP conformance CI job using
+  `modelcontextprotocol/conformance` with a documented
+  `conformance-baseline.yml` of known failures.
 
 ## [v1.7.1] - 2026-11-16
 
