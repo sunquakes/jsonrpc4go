@@ -205,24 +205,71 @@ add2 := jsonrpc4go.Bind[Result](c, "Add2")
 sum, err := add(1, 6)   // 7, <nil>
 res, err := add2(2, 3)  // {5}, <nil>
 ```
-- Typed client generation (`rpcgen`)
+- Typed client generation (`rpcgen`): see [Typed client generation](#-typed-client-generation-rpcgen).
+
+## 🛠️ Typed client generation (rpcgen)
+`cmd/rpcgen` turns an interface that describes a remote service into a typed
+client, so call sites are ordinary Go calls and a wrong method name, argument
+or result type fails at compile time instead of at runtime. It reads Go source
+with `go/parser` (no runtime reflection) and emits a struct that forwards every
+method through `jsonrpc4go.Call[T]`.
+
+- Install
+```
+go install github.com/sunquakes/jsonrpc4go/cmd/rpcgen@latest
+```
+- Describe the service once
 ```go
-// api.go: describe the remote service as an interface
+// api.go
 //go:generate go run github.com/sunquakes/jsonrpc4go/cmd/rpcgen -iface IntRpcApi -service IntRpc -out intrpc_rpc.go
 
 type IntRpcApi interface {
     Add(a, b int) (int, error)
     Add2(a, b int) (Result, error)
 }
-
-// main.go: after `go generate ./...` every call is a plain typed Go call
-c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232")
-api := NewIntRpcApiClient(c)
-sum, err := api.Add(1, 6) // 7, <nil>
 ```
-Every method must return `(T, error)` or `error`. Variadic methods, generic
-methods and embedded interfaces are rejected at generation time, so mistakes
-surface when you run `go generate` instead of at runtime.
+- Generate and call
+```
+go generate ./...
+```
+```go
+c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232")
+api := NewIntRpcApiClient(c) // generated
+sum, err := api.Add(1, 6)    // 7, <nil>
+```
+- Generated code
+```go
+type IntRpcApiClient struct{ c client.Client }
+
+func NewIntRpcApiClient(c client.Client) *IntRpcApiClient { return &IntRpcApiClient{c: c} }
+
+func (p *IntRpcApiClient) Add(a, b int) (int, error) {
+    return jsonrpc4go.Call[int](p.c, "Add", a, b)
+}
+
+var _ IntRpcApi = (*IntRpcApiClient)(nil) // compile-time contract
+```
+- Flags
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `-iface` | (required) | Interface to generate a client for |
+| `-file` / `-dir` | `-dir .` | Single source file, or a directory scanned for the interface |
+| `-service` | interface name | JSON-RPC service prefix (`<service>/<Method>`) |
+| `-name` | `<iface>Client` | Generated struct name |
+| `-pkg` | source package | Package name of the generated file |
+| `-out` | stdout | Output file |
+
+- Rules
+  - Methods must return `(T, error)` or `error`.
+  - Variadic methods, generic methods and embedded interfaces are rejected at
+    generation time.
+  - Unnamed or `_` parameters are named `aN`, and adjacent parameters sharing a
+    type are grouped (`a, b int`).
+  - Only client code is generated. Servers stay ordinary structs registered
+    with `s.Register(new(IntRpc))`; a generator adds nothing there.
+  - See [`examples/http/rpcgen`](examples/http/rpcgen) for a runnable
+    `go:generate` setup.
 
 ## Service registration & discovery
 ### Consul

@@ -201,22 +201,67 @@ add2 := jsonrpc4go.Bind[Result](c, "Add2")
 sum, err := add(1, 6)   // 7, <nil>
 res, err := add2(2, 3)  // {5}, <nil>
 ```
-- 类型化客户端代码生成（`rpcgen`）
+- 类型化客户端代码生成（`rpcgen`）：见[类型化客户端代码生成](#-类型化客户端代码生成rpcgen)。
+
+## 🛠️ 类型化客户端代码生成（rpcgen）
+`cmd/rpcgen` 把描述远端服务的接口转换成类型化客户端：调用点就是普通的 Go
+方法调用，方法名、参数或返回类型写错会在编译期报错，而不是等到运行时。生成器
+用 `go/parser` 读取源码（运行时零反射），产出一个结构体，每个方法经
+`jsonrpc4go.Call[T]` 转发。
+
+- 安装
+```
+go install github.com/sunquakes/jsonrpc4go/cmd/rpcgen@latest
+```
+- 用接口描述服务
 ```go
-// api.go：用接口描述远端服务
+// api.go
 //go:generate go run github.com/sunquakes/jsonrpc4go/cmd/rpcgen -iface IntRpcApi -service IntRpc -out intrpc_rpc.go
 
 type IntRpcApi interface {
     Add(a, b int) (int, error)
     Add2(a, b int) (Result, error)
 }
-
-// main.go：执行 `go generate ./...` 后，每次调用都是普通的强类型 Go 调用
-c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232")
-api := NewIntRpcApiClient(c)
-sum, err := api.Add(1, 6) // 7, <nil>
 ```
-每个方法必须返回 `(T, error)` 或 `error`；可变参数方法、泛型方法和内嵌接口会在生成阶段直接报错，错误在 `go generate` 时暴露，而不是等到运行时。
+- 生成并调用
+```
+go generate ./...
+```
+```go
+c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232")
+api := NewIntRpcApiClient(c) // 生成代码
+sum, err := api.Add(1, 6)    // 7, <nil>
+```
+- 生成结果
+```go
+type IntRpcApiClient struct{ c client.Client }
+
+func NewIntRpcApiClient(c client.Client) *IntRpcApiClient { return &IntRpcApiClient{c: c} }
+
+func (p *IntRpcApiClient) Add(a, b int) (int, error) {
+    return jsonrpc4go.Call[int](p.c, "Add", a, b)
+}
+
+var _ IntRpcApi = (*IntRpcApiClient)(nil) // 编译期契约
+```
+- 参数
+
+| 参数 | 默认值 | 含义 |
+| --- | --- | --- |
+| `-iface` | （必填） | 要生成客户端的接口名 |
+| `-file` / `-dir` | `-dir .` | 指定单个源文件，或扫描目录查找接口 |
+| `-service` | 接口名 | JSON-RPC 服务前缀（`<service>/<Method>`） |
+| `-name` | `<iface>Client` | 生成的结构体名 |
+| `-pkg` | 源包名 | 生成文件的包名 |
+| `-out` | 标准输出 | 输出文件 |
+
+- 规则
+  - 方法必须返回 `(T, error)` 或 `error`。
+  - 可变参数方法、泛型方法和内嵌接口在生成阶段直接报错。
+  - 未命名或 `_` 参数自动命名为 `aN`，相邻同类型参数会合并（`a, b int`）。
+  - 只生成客户端。服务端仍是普通 struct 加 `s.Register(new(IntRpc))`，
+    生成器在那里没有增益。
+  - 可运行的 `go:generate` 示例见 [`examples/http/rpcgen`](examples/http/rpcgen)。
 
 ## 服务注册和发现
 ### Consul
