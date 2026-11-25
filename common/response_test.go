@@ -1,8 +1,32 @@
 package common
 
 import (
+	"encoding/json"
 	"testing"
 )
+
+func TestResponseEchoesNumericID(t *testing.T) {
+	// The JSON-RPC id may be a number (the MCP SDK sends numbers); it must be
+	// echoed back with its original type, not asserted to a string.
+	got, err := json.Marshal(S(float64(0), JsonRpc, 7))
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+	if string(got) != `{"id":0,"jsonrpc":"2.0","result":7}` {
+		t.Errorf("success response = %s", got)
+	}
+	got, err = json.Marshal(E(float64(1), JsonRpc, MethodNotFound))
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(got, &m); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	if v, ok := m["id"].(float64); !ok || v != 1 {
+		t.Errorf("error response id = %#v, want numeric 1", m["id"])
+	}
+}
 
 func TestGetResultSuccess(t *testing.T) {
 	result, err := GetResult([]byte(`{"id":"1","jsonrpc":"2.0","result":7}`))
