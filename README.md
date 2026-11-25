@@ -32,6 +32,8 @@ so any MCP agent client can connect directly:
 - Notifications are answered with `202`; a browser `Origin` allow-list is enforced with `403`.
 - An optional `Host` allow-list (`AllowedHosts`) rejects other hosts with `421`,
   preventing DNS rebinding attacks against localhost servers.
+- Idle sessions are evicted after `SessionTTL` (default 30m), so memory stays
+  bounded even when clients never send `DELETE`.
 
 Methods returning a slice, array, channel or iterator (`iter.Seq` / `iter.Seq2`) are
 pushed value by value on this transport; the tcp/http transports collect them into an array.
@@ -54,6 +56,7 @@ s.Register(new(StreamRpc))
 s.SetOptions(server.StreamableHttpOptions{
 	AllowedOrigins: []string{"https://client.example"},
 	AllowedHosts:   []string{"localhost", "127.0.0.1"}, // optional DNS-rebinding guard
+	SessionTTL:     10 * time.Minute,                   // idle session eviction (default 30m)
 })
 s.Start() // serves http://0.0.0.0:3232/mcp
 ```

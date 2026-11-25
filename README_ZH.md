@@ -32,6 +32,8 @@ s.Start()
 - 通知请求返回 `202`；浏览器 `Origin` 白名单校验失败返回 `403`。
 - 可选的 `Host` 白名单（`AllowedHosts`）会以 `421` 拒绝其他主机，防止针对本地
   服务器的 DNS rebinding 攻击。
+- 空闲会话在 `SessionTTL`（默认 30m）后被回收，即使客户端从不发送 `DELETE`，
+  内存也保持有界。
 
 返回切片、数组、channel 或迭代器（`iter.Seq` / `iter.Seq2`）的方法，在该传输上会逐值推送；
 tcp/http 传输则将其收集为数组返回。
@@ -54,6 +56,7 @@ s.Register(new(StreamRpc))
 s.SetOptions(server.StreamableHttpOptions{
 	AllowedOrigins: []string{"https://client.example"},
 	AllowedHosts:   []string{"localhost", "127.0.0.1"}, // 可选的 DNS rebinding 防护
+	SessionTTL:     10 * time.Minute,                   // 空闲会话回收（默认 30m）
 })
 s.Start() // 提供 http://0.0.0.0:3232/mcp 服务
 ```

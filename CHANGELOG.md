@@ -61,6 +61,26 @@
   compile time. Methods must return `(T, error)` or `error`; variadic,
   generic and embedded interfaces are rejected. See
   `examples/http/rpcgen` for a `go:generate` setup.
+- Added `server.StreamableHttpOptions.SessionTTL` (default 30m): a background
+  janitor evicts idle MCP sessions, bounding memory even when clients never
+  send `DELETE`.
+
+### Fixed
+- Fixed the GET SSE channel dropping events recorded between Last-Event-ID
+  replay and subscription: it now subscribes first and deduplicates by event id.
+- Fixed goroutine leaks in `discovery/etcd` heartbeats; the ticker loop now
+  stops through a `done` channel closed by `Close` instead of the unreachable
+  `context.Background().Done()` case.
+- Fixed `client.Pool.Borrow` blocking forever when the pool is exhausted; it
+  now returns an error after `BORROW_TIMEOUT`.
+- Fixed SSE write errors being swallowed; handlers now abort on client
+  disconnect, and a duplicate response id can no longer block the dispatcher.
+- Performance: hook parameters are only built when a Before hook is registered,
+  `DecodeArgs` marshals the positional list once instead of per argument, SSE
+  fan-out no longer copies the subscriber set per event, each SSE frame is
+  written in a single call, and `tools/list` output is cached and invalidated
+  on registration.
+- Cleared all golangci-lint errcheck/staticcheck findings.
 
 ## [v1.7.1] - 2026-11-16
 
