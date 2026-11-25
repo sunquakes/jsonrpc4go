@@ -139,7 +139,7 @@ func (d *Consul) Register(name string, protocol string, hostname string, port in
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		return errors.New(StatusCodeMap[resp.StatusCode])
 	}
@@ -243,7 +243,7 @@ func (d *Consul) Get(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		return "", errors.New(StatusCodeMap[resp.StatusCode])
 	}
@@ -285,7 +285,7 @@ func (d *Consul) DoCheck(check *Check) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		return errors.New(StatusCodeMap[resp.StatusCode])
 	}

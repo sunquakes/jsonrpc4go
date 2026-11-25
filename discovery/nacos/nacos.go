@@ -139,7 +139,7 @@ func (d *Nacos) Register(name string, protocol string, hostname string, port int
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		body, err := ReadAll(resp.Body)
 		if err != nil {
@@ -178,7 +178,7 @@ func (d *Nacos) Get(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := ReadAll(resp.Body)
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		if err != nil {
@@ -236,7 +236,7 @@ func (d *Nacos) Beat(name string, hostname string, port int) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != STATUS_CODE_PASSING {
 		body, err := ReadAll(resp.Body)
 		if err != nil {

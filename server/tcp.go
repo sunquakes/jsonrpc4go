@@ -184,7 +184,7 @@ func (s *TcpServer) GetEvent() <-chan int {
  * @param conn - The TCP connection
  */
 func (s *TcpServer) handleFunc(conn net.Conn) {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	eofb := []byte(s.Options.PackageEof)
 	if len(eofb) == 0 {
 		common.Debug("package eof is empty")

@@ -121,7 +121,7 @@ func TestHttpConsul(t *testing.T) {
 	<-srv.GetEvent()
 	port := srv.(*server.HttpServer).Port
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w,
+		_, _ = fmt.Fprintf(w,
 			`[{"AggregatedStatus":"passing","Service":{"ID":"IntRpc:%d","Service":"IntRpc","Tags":[],"Meta":{},"Port":%d,"Address":"127.0.0.1","TaggedAddresses":{"lan_ipv4":{"Address":"127.0.0.1","Port":%d},"wan_ipv4":{"Address":"127.0.0.1","Port":%d}},"Weights":{"Passing":1,"Warning":1},"EnableTagOverride":false,"Datacenter":"dc1"},"Checks":[]}]`,
 			port, port, port, port)
 	}))
@@ -144,7 +144,7 @@ func TestHttpNacos(t *testing.T) {
 	<-srv.GetEvent()
 	port := srv.(*server.HttpServer).Port
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w,
+		_, _ = fmt.Fprintf(w,
 			`{"name":"DEFAULT_GROUP@@java_tcp","groupName":"DEFAULT_GROUP","clusters":"","cacheMillis":10000,"hosts":[{"instanceId":"127.0.0.1#%d#DEFAULT#DEFAULT_GROUP@@java_tcp","ip":"127.0.0.1","port":%d,"weight":1.0,"healthy":true,"enabled":true,"ephemeral":true,"clusterName":"DEFAULT","serviceName":"DEFAULT_GROUP@@java_tcp","metadata":{},"instanceHeartBeatInterval":5000,"instanceHeartBeatTimeOut":15000,"ipDeleteTimeout":30000,"instanceIdGenerator":"simple"}],"lastRefTime":1673444367069,"checksum":"","allIPs":false,"reachProtectionThreshold":false,"valid":true}`,
 			port, port)
 	}))

@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/sunquakes/jsonrpc4go/common"
@@ -31,6 +32,13 @@ const (
 	mcpEventRingSize     = 128
 	mcpServerInfoName    = "jsonrpc4go"
 	mcpServerInfoVersion = "1.0.0"
+
+	// mcpDefaultSessionTTL bounds how long an idle session is retained.
+	mcpDefaultSessionTTL = 30 * time.Minute
+	// mcpDefaultMaxSessions caps retained sessions.
+	mcpDefaultMaxSessions = 10000
+	// mcpMaxSweepInterval bounds the session sweep frequency.
+	mcpMaxSweepInterval = time.Minute
 )
 
 // mcpSupportedVersions lists the MCP protocol versions this server accepts.
@@ -53,10 +61,16 @@ type StreamableHttp struct {
  * @property AllowedHosts - Host names accepted in the Host header (with or
  * without port); an empty list allows every host. Set it on localhost-only
  * servers to prevent DNS rebinding attacks.
+ * @property SessionTTL - How long an idle session is retained before it is
+ * swept; zero uses the default (30 minutes)
+ * @property MaxSessions - Upper bound on retained sessions; zero uses the
+ * default (10000). The least recently used session is evicted at the cap.
  */
 type StreamableHttpOptions struct {
 	AllowedOrigins []string
 	AllowedHosts   []string
+	SessionTTL     time.Duration
+	MaxSessions    int
 }
 
 /*
@@ -74,6 +88,10 @@ type sseEvent struct {
 type mcpSession struct {
 	id              string
 	protocolVersion string
+
+	// lastSeen is the unix-nano timestamp of the last request, read by the
+	// idle sweeper.
+	lastSeen atomic.Int64
 
 	mu          sync.Mutex
 	nextEventID int
@@ -94,12 +112,31 @@ func newMcpSession(protocolVersion string) *mcpSession {
 	if _, err := rand.Read(buf); err != nil {
 		log.Panic(err.Error())
 	}
-	return &mcpSession{
+	sess := &mcpSession{
 		id:              hex.EncodeToString(buf),
 		protocolVersion: protocolVersion,
 		subscribers:     make(map[chan sseEvent]struct{}),
 		pending:         make(map[string]chan mcpReply),
 	}
+	sess.touch()
+	return sess
+}
+
+// touch records session activity so the idle sweeper keeps it alive.
+func (sess *mcpSession) touch() {
+	sess.lastSeen.Store(time.Now().UnixNano())
+}
+
+// lastSeenAt returns the last activity timestamp in unix nanoseconds.
+func (sess *mcpSession) lastSeenAt() int64 {
+	return sess.lastSeen.Load()
+}
+
+// active reports whether a GET stream is currently subscribed.
+func (sess *mcpSession) active() bool {
+	sess.mu.Lock()
+	defer sess.mu.Unlock()
+	return len(sess.subscribers) > 0
 }
 
 // nextRequestID allocates a server-side JSON-RPC request id.
@@ -143,8 +180,13 @@ func (sess *mcpSession) deliverResponse(id string, result any, errObj any) bool 
 			reply.err = errors.New("mcp request failed")
 		}
 	}
-	ch <- reply
-	return true
+	// A duplicate response for the same id must not block the handler.
+	select {
+	case ch <- reply:
+		return true
+	default:
+		return false
+	}
 }
 
 func (sess *mcpSession) nextID() int {
@@ -157,16 +199,14 @@ func (sess *mcpSession) nextID() int {
 // record appends the event to the replay ring and fans it out to subscribers.
 func (sess *mcpSession) record(ev sseEvent) {
 	sess.mu.Lock()
+	defer sess.mu.Unlock()
 	sess.ring = append(sess.ring, ev)
 	if len(sess.ring) > mcpEventRingSize {
 		sess.ring = sess.ring[len(sess.ring)-mcpEventRingSize:]
 	}
-	subs := make([]chan sseEvent, 0, len(sess.subscribers))
+	// Sends are non-blocking on buffered channels, so fan out under the lock
+	// instead of copying the subscriber set for every event.
 	for ch := range sess.subscribers {
-		subs = append(subs, ch)
-	}
-	sess.mu.Unlock()
-	for _, ch := range subs {
 		select {
 		case ch <- ev:
 		default:
@@ -222,6 +262,8 @@ type StreamableHttpServer struct {
 	mcpTemplates []McpResourceTemplate
 	mcpPrompts   map[string]McpPrompt
 	mcpPromptOrd []string
+	// toolCache memoizes tools/list until a service or tool is registered.
+	toolCache []map[string]any
 }
 
 /*
@@ -291,6 +333,7 @@ func (s *StreamableHttpServer) RegisterMcpTool(tool McpTool) {
 		s.mcpToolOrder = append(s.mcpToolOrder, tool.Name)
 	}
 	s.mcpTools[tool.Name] = tool
+	s.toolCache = nil
 }
 
 /*
@@ -359,6 +402,7 @@ func (s *StreamableHttpServer) Start() {
 		}
 		s.Server.Sm.Range(register)
 	}
+	go s.sweepSessions()
 	mux := http.NewServeMux()
 	mux.HandleFunc(McpEndpoint, s.handleMcp)
 	ln := common.BindListener("0.0.0.0", &s.Port)
@@ -393,6 +437,9 @@ func (s *StreamableHttpServer) Register(m any) {
 	if err != nil {
 		log.Panic(err.Error())
 	}
+	s.mcpLock.Lock()
+	s.toolCache = nil
+	s.mcpLock.Unlock()
 }
 
 /*
@@ -451,6 +498,79 @@ func (s *StreamableHttpServer) SetAfterFunc(afterFunc func(id any, method string
  */
 func (s *StreamableHttpServer) GetEvent() <-chan int {
 	return s.Event
+}
+
+/*
+ * sessionTTL returns the configured idle session lifetime or its default.
+ */
+func (s *StreamableHttpServer) sessionTTL() time.Duration {
+	if s.Options.SessionTTL > 0 {
+		return s.Options.SessionTTL
+	}
+	return mcpDefaultSessionTTL
+}
+
+/*
+ * maxSessions returns the configured session cap or its default.
+ */
+func (s *StreamableHttpServer) maxSessions() int {
+	if s.Options.MaxSessions > 0 {
+		return s.Options.MaxSessions
+	}
+	return mcpDefaultMaxSessions
+}
+
+/*
+ * sweepSessions periodically deletes sessions idle for longer than
+ * SessionTTL, so abandoned clients no longer leak server memory.
+ */
+func (s *StreamableHttpServer) sweepSessions() {
+	ttl := s.sessionTTL()
+	interval := ttl / 4
+	if interval < time.Second {
+		interval = time.Second
+	}
+	if interval > mcpMaxSweepInterval {
+		interval = mcpMaxSweepInterval
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for range ticker.C {
+		cutoff := time.Now().Add(-ttl).UnixNano()
+		s.Sessions.Range(func(key, value any) bool {
+			sess := value.(*mcpSession)
+			// Sessions with a live GET stream are still in use.
+			if sess.lastSeenAt() < cutoff && !sess.active() {
+				s.Sessions.Delete(key)
+			}
+			return true
+		})
+	}
+}
+
+/*
+ * storeSession records a new session, evicting the least recently used one
+ * when the configured cap is reached.
+ */
+func (s *StreamableHttpServer) storeSession(sess *mcpSession) {
+	max := s.maxSessions()
+	count := 0
+	var (
+		oldestKey  string
+		oldestSeen int64
+	)
+	s.Sessions.Range(func(key, value any) bool {
+		count++
+		seen := value.(*mcpSession).lastSeenAt()
+		if oldestKey == "" || seen < oldestSeen {
+			oldestKey, oldestSeen = key.(string), seen
+		}
+		return true
+	})
+	if count >= max && oldestKey != "" {
+		s.Sessions.Delete(oldestKey)
+	}
+	s.Sessions.Store(sess.id, sess)
 }
 
 /*
@@ -538,7 +658,9 @@ func (s *StreamableHttpServer) resolveSession(w http.ResponseWriter, r *http.Req
 		_, _ = w.Write(common.JsonErrorEnvelope(nil, common.InvalidRequest))
 		return nil, false
 	}
-	return v.(*mcpSession), true
+	sess := v.(*mcpSession)
+	sess.touch()
+	return sess, true
 }
 
 /*
@@ -645,7 +767,7 @@ func (s *StreamableHttpServer) handleInitialize(w http.ResponseWriter, r *http.R
 		}
 	}
 	sess := newMcpSession(negotiated)
-	s.Sessions.Store(sess.id, sess)
+	s.storeSession(sess)
 	w.Header().Set(McpSessionHeader, sess.id)
 	w.Header().Set(McpProtocolHeader, sess.protocolVersion)
 	result := map[string]any{
@@ -681,22 +803,40 @@ func (s *StreamableHttpServer) handleGet(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	sess := v.(*mcpSession)
+	sess.touch()
 	cw := &sseWriter{w: w, sess: sess}
-	cw.start()
+	if err := cw.start(); err != nil {
+		return
+	}
 	lastID := 0
 	if raw := r.Header.Get(McpLastEventHeader); raw != "" {
 		lastID, _ = strconv.Atoi(raw)
 	}
-	for _, ev := range sess.replayAfter(lastID) {
-		cw.writeRaw(ev)
-	}
-
+	// Subscribe before replaying so events recorded in between are never
+	// lost. Replay may then deliver events already queued on the channel, so
+	// skip every event id at or below the last one written.
 	ch, unsub := sess.subscribe()
 	defer unsub()
+	lastSent := lastID
+	for _, ev := range sess.replayAfter(lastID) {
+		if ev.ID <= lastSent {
+			continue
+		}
+		if err := cw.writeRaw(ev); err != nil {
+			return
+		}
+		lastSent = ev.ID
+	}
 	for {
 		select {
 		case ev := <-ch:
-			cw.writeRaw(ev)
+			if ev.ID <= lastSent {
+				continue
+			}
+			if err := cw.writeRaw(ev); err != nil {
+				return
+			}
+			lastSent = ev.ID
 		case <-r.Context().Done():
 			return
 		}
@@ -754,7 +894,7 @@ func (s *StreamableHttpServer) dispatchNative(w http.ResponseWriter, sess *mcpSe
 	cw := &sseWriter{w: w, sess: sess}
 	index := 0
 	stream := &common.StreamHandler{
-		Begin: cw.start,
+		Begin: func() { _ = cw.start() },
 		OnValue: func(v any) error {
 			data, err := json.Marshal(map[string]any{
 				"jsonrpc": common.JsonRpc,
@@ -773,7 +913,9 @@ func (s *StreamableHttpServer) dispatchNative(w http.ResponseWriter, sess *mcpSe
 		return
 	}
 	if streamed {
-		cw.writeJSON(resp)
+		if err := cw.writeJSON(resp); err != nil {
+			log.Printf("write SSE event failed: %v", err)
+		}
 		return
 	}
 	s.respondJSON(w, sess, resp)
@@ -803,9 +945,9 @@ type sseWriter struct {
 	started bool
 }
 
-func (e *sseWriter) start() {
+func (e *sseWriter) start() error {
 	if e.started {
-		return
+		return nil
 	}
 	h := e.w.Header()
 	h.Set("Content-Type", "text/event-stream")
@@ -816,12 +958,20 @@ func (e *sseWriter) start() {
 	e.w.WriteHeader(http.StatusOK)
 	e.started = true
 	// SEP-1699: advertise the reconnect interval and emit an id-bearing
-	// priming event so clients can resume with Last-Event-ID.
-	fmt.Fprint(e.w, "retry: 2000\n\n")
+	// priming event so clients can resume with Last-Event-ID. Both frames are
+	// written in a single call.
+	var buf strings.Builder
+	buf.WriteString("retry: 2000\n\n")
 	if e.sess != nil {
-		fmt.Fprintf(e.w, "id: %d\ndata: \n\n", e.sess.nextID())
+		buf.WriteString("id: ")
+		buf.WriteString(strconv.Itoa(e.sess.nextID()))
+		buf.WriteString("\ndata: \n\n")
+	}
+	if _, err := io.WriteString(e.w, buf.String()); err != nil {
+		return err
 	}
 	e.flush()
+	return nil
 }
 
 func (e *sseWriter) flush() {
@@ -834,33 +984,42 @@ func (e *sseWriter) flush() {
 // replay and writes it to the stream.
 func (e *sseWriter) event(data []byte) error {
 	if !e.started {
-		e.start()
+		if err := e.start(); err != nil {
+			return err
+		}
 	}
 	ev := sseEvent{Data: data}
 	if e.sess != nil {
 		ev.ID = e.sess.nextID()
 		e.sess.record(ev)
 	}
-	e.writeRaw(ev)
+	return e.writeRaw(ev)
+}
+
+func (e *sseWriter) writeRaw(ev sseEvent) error {
+	// Build the whole frame and write it at once to cut per-event syscalls.
+	buf := make([]byte, 0, len(ev.Data)+32)
+	if ev.ID > 0 {
+		buf = append(buf, "id: "...)
+		buf = strconv.AppendInt(buf, int64(ev.ID), 10)
+		buf = append(buf, '\n')
+	}
+	buf = append(buf, "event: message\ndata: "...)
+	buf = append(buf, ev.Data...)
+	buf = append(buf, '\n', '\n')
+	if _, err := e.w.Write(buf); err != nil {
+		return err
+	}
+	e.flush()
 	return nil
 }
 
-func (e *sseWriter) writeRaw(ev sseEvent) {
-	if ev.ID > 0 {
-		fmt.Fprintf(e.w, "id: %d\n", ev.ID)
-	}
-	fmt.Fprintf(e.w, "event: message\ndata: %s\n\n", ev.Data)
-	e.flush()
-}
-
-func (e *sseWriter) writeJSON(resp any) {
+func (e *sseWriter) writeJSON(resp any) error {
 	data, err := json.Marshal(resp)
 	if err != nil {
-		return
+		return err
 	}
-	if err := e.event(data); err != nil {
-		log.Printf("write SSE event failed: %v", err)
-	}
+	return e.event(data)
 }
 
 /*
@@ -870,6 +1029,11 @@ func (e *sseWriter) writeJSON(resp any) {
  * expanded into their JSON-tagged fields.
  */
 func (s *StreamableHttpServer) listTools() []map[string]any {
+	s.mcpLock.Lock()
+	defer s.mcpLock.Unlock()
+	if s.toolCache != nil {
+		return s.toolCache
+	}
 	tools := []map[string]any{}
 	s.Server.Sm.Range(func(_, v any) bool {
 		svc := v.(*common.Service)
@@ -889,7 +1053,6 @@ func (s *StreamableHttpServer) listTools() []map[string]any {
 		}
 		return true
 	})
-	s.mcpLock.Lock()
 	for _, name := range s.mcpToolOrder {
 		t := s.mcpTools[name]
 		schema := t.InputSchema
@@ -902,7 +1065,7 @@ func (s *StreamableHttpServer) listTools() []map[string]any {
 			"inputSchema": schema,
 		})
 	}
-	s.mcpLock.Unlock()
+	s.toolCache = tools
 	return tools
 }
 
@@ -1038,7 +1201,7 @@ func (s *StreamableHttpServer) handleToolsCall(w http.ResponseWriter, r *http.Re
 	if hasToken {
 		progress := 0
 		stream = &common.StreamHandler{
-			Begin: cw.start,
+			Begin: func() { _ = cw.start() },
 			OnValue: func(v any) error {
 				progress++
 				data, err := json.Marshal(map[string]any{
@@ -1059,7 +1222,9 @@ func (s *StreamableHttpServer) handleToolsCall(w http.ResponseWriter, r *http.Re
 	}
 	toolResp := callToolResponse(id, resp)
 	if streamed {
-		cw.writeJSON(toolResp)
+		if err := cw.writeJSON(toolResp); err != nil {
+			log.Printf("write SSE event failed: %v", err)
+		}
 		return
 	}
 	s.respondJSON(w, sess, toolResp)
@@ -1091,7 +1256,9 @@ func (s *StreamableHttpServer) callMcpTool(w http.ResponseWriter, sess *mcpSessi
 	}
 	resp := mcpToolResponse(id, out, err)
 	if cw.started {
-		cw.writeJSON(resp)
+		if werr := cw.writeJSON(resp); werr != nil {
+			log.Printf("write SSE event failed: %v", werr)
+		}
 		return
 	}
 	s.respondJSON(w, sess, resp)

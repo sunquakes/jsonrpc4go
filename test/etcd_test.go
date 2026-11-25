@@ -112,14 +112,14 @@ func TestEtcdRegister(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to dial bufconn: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create a gRPC client connection using grpc.Dial
 	clientConn, err := NewEtcdClient("192.168.1.15:3232", conn)
 	if err != nil {
 		t.Fatalf("Failed to create gRPC client connection: %v", err)
 	}
-	defer clientConn.Close()
+	defer func() { _ = clientConn.Close() }()
 
 	listenerAddr := "bufconn://" + bufListener.Addr().String()
 	URL, err := url.Parse(listenerAddr)
@@ -158,14 +158,14 @@ func TestEtcdGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to dial bufconn: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create a gRPC client connection using grpc.Dial
 	clientConn, err := NewEtcdClient("192.168.1.15:3232", conn)
 	if err != nil {
 		t.Fatalf("Failed to create gRPC client connection: %v", err)
 	}
-	defer clientConn.Close()
+	defer func() { _ = clientConn.Close() }()
 
 	listenerAddr := "bufconn://" + bufListener.Addr().String()
 	URL, err := url.Parse(listenerAddr)

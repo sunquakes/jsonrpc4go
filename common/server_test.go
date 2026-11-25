@@ -37,7 +37,7 @@ func (u *unitRpc) Variadic(a ...int) int { return 0 }
 
 func (u *unitRpc) TooManyOut() (int, int, error) { return 0, 0, nil }
 
-func (u *unitRpc) BadErrorPos() (error, int) { return nil, 0 }
+func (u *unitRpc) BadErrorPos() (error, int) { return nil, 0 } //nolint:staticcheck // must stay invalid: RegisterMethod rejects a non-trailing error
 
 func newUnitServer(t *testing.T) *Server {
 	t.Helper()

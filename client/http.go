@@ -122,7 +122,7 @@ func (c *HttpClient) SetOptions(httpOptions any) {
 		if err != nil {
 			return
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		caCert, err := io.ReadAll(file)
 		if err != nil {
 			return
@@ -257,7 +257,7 @@ func (c *HttpClient) handleFunc(b []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

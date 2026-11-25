@@ -202,7 +202,7 @@ func (c *StreamableHttpClient) ensureSession() error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	_, _ = io.Copy(io.Discard, resp.Body)
 	sid := resp.Header.Get(mcpSessionHeaderName)
 	if sid == "" {
@@ -363,7 +363,7 @@ func (c *StreamableHttpClient) Call(method string, args ...any) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if !isSSE(resp) {
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
@@ -421,7 +421,7 @@ func (c *StreamableHttpClient) Stream(method string, args ...any) iter.Seq2[any,
 			yield(nil, err)
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		if !isSSE(resp) {
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
@@ -479,7 +479,7 @@ func (c *StreamableHttpClient) Notify(method string, args ...any) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode == http.StatusAccepted {
 		return nil
 	}
@@ -525,7 +525,7 @@ func (c *StreamableHttpClient) BatchCall() ([]BatchResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

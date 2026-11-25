@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sunquakes/jsonrpc4go/discovery"
@@ -39,12 +40,16 @@ var PROTOCOL_HTTPS string = "https"
  * @Description: Etcd client structure, implements discovery.Driver interface
  * @Field URL: Etcd server URL address
  * @Field Conn: gRPC connection
- * @Field Heartbeat: Heartbeat channel
+ * @Field Heartbeat: Legacy heartbeat channel kept for compatibility
+ * @Field done: Channel closed by Close to stop heartbeat goroutines
  */
 type Etcd struct {
 	URL       *url.URL
 	Conn      *grpc.ClientConn
 	Heartbeat chan bool
+
+	mu   sync.Mutex
+	done chan struct{}
 }
 
 /**
@@ -76,7 +81,7 @@ func NewEtcd(rawURL string) (discovery.Driver, error) {
 		return nil, err
 	}
 	heartbeat := make(chan bool)
-	etcd := &Etcd{URL, conn, heartbeat}
+	etcd := &Etcd{URL: URL, Conn: conn, Heartbeat: heartbeat, done: make(chan struct{})}
 	return etcd, nil
 }
 
@@ -160,20 +165,54 @@ func (d *Etcd) Get(name string) (string, error) {
  * @Param f: Heartbeat callback function
  */
 func (d *Etcd) SendHeartbeat(f func()) {
+	done := d.stopChan()
 	go func() {
-		for {
-			d.Heartbeat <- true
-			time.Sleep(INTERVAL)
-		}
-	}()
-	go func() {
+		// Beat once immediately, then on every tick until Close is called.
+		ticker := time.NewTicker(INTERVAL)
+		defer ticker.Stop()
+		f()
 		for {
 			select {
-			case <-d.Heartbeat:
+			case <-ticker.C:
 				f()
-			case <-context.Background().Done():
+			case <-done:
 				return
 			}
 		}
 	}()
+}
+
+/**
+ * @Description: Lazily create the shutdown channel so drivers built as struct
+ * literals (without NewEtcd) still support cancellation
+ * @Receiver d: Etcd structure pointer
+ * @Return chan struct{}: Channel closed by Close
+ */
+func (d *Etcd) stopChan() chan struct{} {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.done == nil {
+		d.done = make(chan struct{})
+	}
+	return d.done
+}
+
+/**
+ * @Description: Stop heartbeat goroutines and close the gRPC connection
+ * @Receiver d: Etcd structure pointer
+ * @Return error: Error message from closing the connection
+ */
+func (d *Etcd) Close() error {
+	done := d.stopChan()
+	d.mu.Lock()
+	select {
+	case <-done:
+	default:
+		close(done)
+	}
+	d.mu.Unlock()
+	if d.Conn != nil {
+		return d.Conn.Close()
+	}
+	return nil
 }

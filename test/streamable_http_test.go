@@ -108,7 +108,7 @@ func shPost(t *testing.T, addr string, body any, headers map[string]string) (*ht
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
@@ -461,7 +461,7 @@ func TestStreamableLastEventIDReplay(t *testing.T) {
 		server.McpLastEventHeader: "3",
 	})
 	defer cancel()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET status %d", resp.StatusCode)
 	}
@@ -482,7 +482,7 @@ func TestStreamableGetChannel(t *testing.T) {
 	sid, _, _ := shInitialize(t, addr, "2025-06-18")
 	cancel, resp := shGet(t, addr, shSession(sid))
 	defer cancel()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET status %d", resp.StatusCode)
 	}
@@ -514,7 +514,7 @@ func TestStreamableDeleteSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
 		t.Errorf("delete status %d, want 204", resp.StatusCode)
 	}
@@ -522,7 +522,7 @@ func TestStreamableDeleteSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("second delete status %d, want 404", resp.StatusCode)
 	}
@@ -581,7 +581,7 @@ func TestStreamableBadRequests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("PUT status %d, want 405", resp.StatusCode)
 	}

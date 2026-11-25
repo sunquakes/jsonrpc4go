@@ -222,14 +222,24 @@ func DecodeArgs(paramsData any, types []reflect.Type) ([]reflect.Value, error) {
 	if len(list) != len(types) {
 		return nil, fmt.Errorf("json: The number of parameters does not match: expected %d, got %d", len(types), len(list))
 	}
+	// Marshal the positional list once and split it into raw elements, so
+	// decoding N arguments costs two JSON passes instead of two per argument.
+	blob, err := json.Marshal(list)
+	if err != nil {
+		Debug(err)
+		return nil, err
+	}
+	var raw []json.RawMessage
+	if err := json.Unmarshal(blob, &raw); err != nil {
+		Debug(err)
+		return nil, err
+	}
+	if len(raw) != len(types) {
+		return nil, fmt.Errorf("json: The number of parameters does not match: expected %d, got %d", len(types), len(raw))
+	}
 	for k, t := range types {
 		v := reflect.New(t)
-		jsonStr, err := json.Marshal(list[k])
-		if err != nil {
-			Debug(err)
-			return nil, err
-		}
-		if err := json.Unmarshal(jsonStr, v.Interface()); err != nil {
+		if err := json.Unmarshal(raw[k], v.Interface()); err != nil {
 			Debug(err)
 			return nil, err
 		}

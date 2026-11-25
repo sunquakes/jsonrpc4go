@@ -27,6 +27,11 @@ const DEFAULT_MAX_ACTIVE = 5
 const CONNECT_TIMEOUT = 3 * time.Second
 
 /**
+ * @Description: Maximum time Borrow waits for a free pool slot
+ */
+const BORROW_TIMEOUT = 5 * time.Second
+
+/**
  * @Description: Connection pool options structure
  * @Field MinIdle: Minimum number of idle connections
  * @Field MaxActive: Maximum number of active connections
@@ -133,8 +138,15 @@ func (p *Pool) ActiveAddress() (int, error) {
  */
 func (p *Pool) Borrow() (net.Conn, error) {
 	// Wait until the pool has capacity for another borrowed connection,
-	// without holding the lock so that releases are never blocked.
-	p.slots <- struct{}{}
+	// without holding the lock so that releases are never blocked. The wait is
+	// bounded so a saturated pool fails fast instead of hanging forever.
+	timer := time.NewTimer(BORROW_TIMEOUT)
+	defer timer.Stop()
+	select {
+	case p.slots <- struct{}{}:
+	case <-timer.C:
+		return nil, errors.New("connection pool exhausted: timed out waiting for a free slot")
+	}
 
 	// Prefer reusing an idle connection.
 	select {

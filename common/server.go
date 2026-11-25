@@ -287,15 +287,17 @@ func (svr *Server) HandleRequest(jsonMap map[string]any, stream *StreamHandler) 
 		Debug(err)
 		return E(id, jsonRpc, InvalidParams), false
 	}
-	hookParams := make([]any, len(args))
-	for k, v := range args {
-		hookParams[k] = v.Interface()
-	}
-
 	// before
-	err = svr.Before(id, mName, hookParams)
-	if err != nil {
-		return CE(id, jsonRpc, err.Error()), false
+	if svr.Hooks.BeforeFunc != nil {
+		// Build the hook argument view lazily: most servers configure no
+		// BeforeFunc and should not pay for an allocation per request.
+		hookParams := make([]any, len(args))
+		for k, v := range args {
+			hookParams[k] = v.Interface()
+		}
+		if err = svr.Before(id, mName, hookParams); err != nil {
+			return CE(id, jsonRpc, err.Error()), false
+		}
 	}
 
 	in := make([]reflect.Value, 0, len(args)+1)
