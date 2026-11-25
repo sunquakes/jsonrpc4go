@@ -196,6 +196,24 @@ fmt.Println(results[1].Result) // 5
 ```go
 c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127.0.0.1:3234")
 ```
+- Typed client generation (`rpcgen`)
+```go
+// api.go: describe the remote service as an interface
+//go:generate go run github.com/sunquakes/jsonrpc4go/cmd/rpcgen -iface IntRpcApi -service IntRpc -out intrpc_rpc.go
+
+type IntRpcApi interface {
+    Add(a, b int) (int, error)
+    Add2(a, b int) (Result, error)
+}
+
+// main.go: after `go generate ./...` every call is a plain typed Go call
+c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232")
+api := NewIntRpcApiClient(c)
+sum, err := api.Add(1, 6) // 7, <nil>
+```
+Every method must return `(T, error)` or `error`. Variadic methods, generic
+methods and embedded interfaces are rejected at generation time, so mistakes
+surface when you run `go generate` instead of at runtime.
 
 ## Service registration & discovery
 ### Consul
