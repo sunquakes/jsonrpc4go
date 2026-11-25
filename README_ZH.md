@@ -67,8 +67,8 @@ for v, err := range jsonrpc4go.Stream[int](c, "Count", 3) {
 	fmt.Println(v, err) // 1 <nil>、2 <nil>、3 <nil>
 }
 
-// Call 同时理解两种形态：流式结果以 []any 返回。
-values, _ := c.Call("Count", 2) // [1, 2]
+// Call 同时解码两种形态：流式结果变成强类型切片。
+values, _ := jsonrpc4go.Call[[]int](c, "Count", 2) // [1 2]
 ```
 
 - MCP 兼容层：同一端点上实现了 `initialize`、`ping`、`tools/list` 与 `tools/call`
@@ -123,7 +123,8 @@ import (
 
 func main() {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232") // http协议
-	result, err := jsonrpc4go.Call[int](c, "Add", 1, 6)
+	add := jsonrpc4go.Bind[int](c, "Add") // 只绑定一次，调用点不再需要方法名和 [T]
+	result, err := add(1, 6)
 	// 发送的数据格式: {"id":"1","jsonrpc":"2.0","method":"IntRpc/Add","params":[1,6]}
 	// 接收的数据格式: {"id":"1","jsonrpc":"2.0","result":7}
 	fmt.Println(err) // nil

@@ -135,7 +135,7 @@ func TestSetHooksCustomError(t *testing.T) {
 	go s.Start()
 	<-s.GetEvent()
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
-	_, err := c.Call("Add", 1, 2)
+	_, err := jsonrpc4go.Call[int](c, "Add", 1, 2)
 	if err.Error() != CUSTOM_ERROR {
 		t.Errorf(ERROR_MESSAGE_TEMPLETE, CUSTOM_ERROR, err.Error())
 	}
@@ -148,16 +148,16 @@ func TestRateLimit(t *testing.T) {
 	go s.Start()
 	<-s.GetEvent()
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
-	_, err := c.Call("Add", 1, 2)
+	_, err := jsonrpc4go.Call[int](c, "Add", 1, 2)
 	if err != nil {
 		t.Errorf(ERROR_MESSAGE_TEMPLETE, "nil", err.Error())
 	}
-	_, err = c.Call("Add", 1, 2)
+	_, err = jsonrpc4go.Call[int](c, "Add", 1, 2)
 	if err.Error() != "Too many requests" {
 		t.Errorf(ERROR_MESSAGE_TEMPLETE, "Too many requests", err.Error())
 	}
 	time.Sleep(5 * time.Second)
-	_, err = c.Call("Add", 1, 2)
+	_, err = jsonrpc4go.Call[int](c, "Add", 1, 2)
 	if err != nil {
 		t.Errorf(ERROR_MESSAGE_TEMPLETE, "nil", err.Error())
 	}
@@ -230,7 +230,7 @@ func TestFailConnect(t *testing.T) {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:1")
 	var err error
 	for range 20 {
-		_, err = c.Call("Add", 1, 2)
+		_, err = jsonrpc4go.Call[int](c, "Add", 1, 2)
 		if err == nil {
 			t.Errorf("Error expected be not nil, but nil got")
 		}
@@ -242,7 +242,7 @@ func TestFailConnect(t *testing.T) {
 	<-s.GetEvent()
 	c2, _ := jsonrpc4go.NewClient("IntRpc", "tcp", serverAddr(s))
 	for range 20 {
-		_, err = c2.Call("Add", 1, 2)
+		_, err = jsonrpc4go.Call[int](c2, "Add", 1, 2)
 		if err != nil {
 			t.Errorf(EQUAL_MESSAGE_TEMPLETE, 1, 2, 3, err)
 		}

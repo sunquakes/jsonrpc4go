@@ -608,24 +608,13 @@ func TestStreamableClientStreamingCall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := c.Call("Count", 3)
+	// A stream is collected into a typed slice.
+	values, err := jsonrpc4go.Call[[]int](c, "Count", 3)
 	if err != nil {
 		t.Fatal(err)
 	}
-	values, ok := res.([]any)
-	if !ok || len(values) != 3 {
-		t.Fatalf("Call streaming expected 3 values, got %#v", res)
-	}
-	if values[0] != float64(1) || values[2] != float64(3) {
+	if len(values) != 3 || values[0] != 1 || values[2] != 3 {
 		t.Errorf("stream values %v", values)
-	}
-	// Typed generic helper decodes the collected stream.
-	typed, err := jsonrpc4go.Call[[]int](c, "Count", 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(typed) != 2 || typed[0] != 1 || typed[1] != 2 {
-		t.Errorf("typed stream %v", typed)
 	}
 }
 
@@ -699,7 +688,7 @@ func TestStreamableClientError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = c.Call("Fail", -1)
+	_, err = jsonrpc4go.Call[int](c, "Fail", -1)
 	if err == nil {
 		t.Fatal("expected error from Fail(-1)")
 	}
@@ -723,17 +712,16 @@ func TestStreamableLegacyHttpRegression(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := c.Call("Count", 3)
+	values, err := jsonrpc4go.Call[[]int](c, "Count", 3)
 	if err != nil {
 		t.Fatal(err)
 	}
-	values, ok := res.([]any)
-	if !ok || len(values) != 3 || values[2] != float64(3) {
-		t.Errorf("http collected stream %#v", res)
+	if len(values) != 3 || values[2] != 3 {
+		t.Errorf("http collected stream %v", values)
 	}
 	c2, _ := jsonrpc4go.NewClient("IntRpc", "http", serverAddr(s))
-	res, err = c2.Call("Add", 1, 2)
-	if err != nil || res != float64(3) {
-		t.Errorf("http Add %v %v", res, err)
+	sum, err := jsonrpc4go.Call[int](c2, "Add", 1, 2)
+	if err != nil || sum != 3 {
+		t.Errorf("http Add %v %v", sum, err)
 	}
 }

@@ -67,8 +67,8 @@ for v, err := range jsonrpc4go.Stream[int](c, "Count", 3) {
 	fmt.Println(v, err) // 1 <nil>, 2 <nil>, 3 <nil>
 }
 
-// Call understands both shapes: a stream is returned as []any.
-values, _ := c.Call("Count", 2) // [1, 2]
+// Call decodes either shape: a stream becomes a typed slice.
+values, _ := jsonrpc4go.Call[[]int](c, "Count", 2) // [1 2]
 ```
 
 - MCP compatibility layer: `initialize`, `ping`, `tools/list` and `tools/call`
@@ -127,7 +127,8 @@ import (
 
 func main() {
 	c, _ := jsonrpc4go.NewClient("IntRpc", "http", "127.0.0.1:3232")
-	result, err := jsonrpc4go.Call[int](c, "Add", 1, 6)
+	add := jsonrpc4go.Bind[int](c, "Add") // bind once: no method string or [T] at the call site
+	result, err := add(1, 6)
 	// data sent: {"id":"1","jsonrpc":"2.0","method":"IntRpc/Add","params":[1,6]}
 	// data received: {"id":"1","jsonrpc":"2.0","result":7}
 	fmt.Println(err) // nil
