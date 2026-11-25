@@ -436,7 +436,8 @@ func TestInputSchema(t *testing.T) {
 		t.Errorf("schema type %v", schema["type"])
 	}
 	// Struct parameters expand to JSON-tagged exported fields.
-	schema = inputSchema([]reflect.Type{reflect.TypeFor[unitPerson]()})
+	person := unitPerson{Name: "amy", Age: 3, Skip: "gone", secret: "hidden"}
+	schema = inputSchema([]reflect.Type{reflect.TypeOf(person)})
 	props, _ = schema["properties"].(map[string]any)
 	if props["name"] == nil || props["age"] == nil {
 		t.Errorf("struct properties %v", props)
