@@ -22,6 +22,14 @@ func main() {
 	// data sent: {"jsonrpc":"2.0","method":"IntRpc/Add2","params":[1,6]}
 	fmt.Println(err2) // nil
 
+	// bind a method once, then call it like a local function
+	add := jsonrpc4go.Bind[int](c, "Add")
+	add2 := jsonrpc4go.Bind[Result](c, "Add2")
+	b1, err3 := add(1, 6)
+	b2, err4 := add2(2, 3)
+	fmt.Println(b1, err3)   // 7 nil
+	fmt.Println(b2.C, err4) // 5 nil
+
 	// batch call
 	c.BatchAppend("Add1", 1, 6)
 	c.BatchAppend("Add", 2, 3)

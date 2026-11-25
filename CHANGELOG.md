@@ -20,6 +20,9 @@
   one-way notifications.
 - Added the generic helper `jsonrpc4go.Call[T](c, method, args...) (T, error)`
   that decodes the result directly into `T`.
+- Added the generic helper `jsonrpc4go.Bind[T](c, method)` that fixes a
+  client, method and result type into a typed `func(args ...any) (T, error)`,
+  so call sites avoid repeating the generic argument and method name.
 - Added the `streamable-http` protocol: a single `/mcp` endpoint implementing
   the MCP Streamable HTTP transport (JSON unary results, SSE streaming
   results, `Mcp-Session-Id` sessions, `Mcp-Protocol-Version` negotiation,

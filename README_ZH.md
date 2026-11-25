@@ -192,6 +192,15 @@ fmt.Println(results[1].Result) // 5
 ```go
 c, _ := jsonrpc4go.NewClient("IntRpc", "tcp", "127.0.0.1:3232,127.0.0.1:3233,127.0.0.1:3234")
 ```
+- 绑定方法为强类型函数
+```go
+// 一次性绑定客户端、方法名与结果类型
+add := jsonrpc4go.Bind[int](c, "Add")
+add2 := jsonrpc4go.Bind[Result](c, "Add2")
+
+sum, err := add(1, 6)   // 7, <nil>
+res, err := add2(2, 3)  // {5}, <nil>
+```
 - 类型化客户端代码生成（`rpcgen`）
 ```go
 // api.go：用接口描述远端服务

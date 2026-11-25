@@ -100,6 +100,33 @@ func TestGenericCallDecodeMismatch(t *testing.T) {
 	}
 }
 
+func TestBindReusesMethodAndType(t *testing.T) {
+	c := &fakeClient{result: map[string]any{"c": float64(7)}}
+	add2 := Bind[fakeResult](c, "Add2")
+	result, err := add2(1, 6)
+	if err != nil {
+		t.Fatalf("bound call failed: %v", err)
+	}
+	if result.C != 7 {
+		t.Errorf("result expected {7}, got %#v", result)
+	}
+	if c.gotMethod != "Add2" || len(c.gotArgs) != 2 || c.gotArgs[1] != 6 {
+		t.Errorf("inner Call received method=%q args=%v", c.gotMethod, c.gotArgs)
+	}
+}
+
+func TestBindErrorAndNilResult(t *testing.T) {
+	want := errors.New("Method not found")
+	nope := Bind[int](&fakeClient{err: want}, "Nope")
+	if _, err := nope(1); err != want {
+		t.Errorf("error expected %v, got %v", want, err)
+	}
+	noResult := Bind[int](&fakeClient{}, "NoResult")
+	if v, err := noResult(1); err != nil || v != 0 {
+		t.Errorf("expected zero value and nil error, got %d, %v", v, err)
+	}
+}
+
 func TestFakeNotifyPassthrough(t *testing.T) {
 	c := &fakeClient{}
 	if err := c.Notify("Add2", 1, 6); err != nil {
