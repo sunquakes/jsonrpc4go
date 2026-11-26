@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sunquakes/jsonrpc4go/discovery"
-	"github.com/sunquakes/jsonrpc4go/discovery/etcd/etcdserverpb"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery/etcd/etcdserverpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

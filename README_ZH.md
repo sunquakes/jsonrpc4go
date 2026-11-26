@@ -23,7 +23,7 @@ s.Start()
 
 ## 🧰 安装
 ```
-go get -u github.com/sunquakes/jsonrpc4go
+go get -u github.com/sunquakes/jsonrpc4go/v2
 ```
 ## 📖 开始使用
 服务端方法直接接收值参数并返回结果（可选地在其后返回一个 `error`）。参数以位置数组的形式传输（`"params":[1,6]`）。
@@ -33,7 +33,7 @@ go get -u github.com/sunquakes/jsonrpc4go
 package main
 
 import (
-    "github.com/sunquakes/jsonrpc4go"
+    "github.com/sunquakes/jsonrpc4go/v2"
 )
 
 type IntRpc struct{}
@@ -54,7 +54,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go"
+	"github.com/sunquakes/jsonrpc4go/v2"
 )
 
 func main() {

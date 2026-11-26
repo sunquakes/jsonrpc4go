@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/sunquakes/jsonrpc4go/common"
-	"github.com/sunquakes/jsonrpc4go/discovery"
+	"github.com/sunquakes/jsonrpc4go/v2/common"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery"
 )
 
 /**

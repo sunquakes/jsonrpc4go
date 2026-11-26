@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/sunquakes/jsonrpc4go/discovery/etcd"
-	"github.com/sunquakes/jsonrpc4go/discovery/etcd/etcdserverpb"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery/etcd"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery/etcd/etcdserverpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"

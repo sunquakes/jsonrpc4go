@@ -1,4 +1,4 @@
-module github.com/sunquakes/jsonrpc4go
+module github.com/sunquakes/jsonrpc4go/v2
 
 go 1.23.0
 

@@ -3,9 +3,9 @@ package test
 import (
 	"testing"
 
-	"github.com/sunquakes/jsonrpc4go"
-	"github.com/sunquakes/jsonrpc4go/client"
-	"github.com/sunquakes/jsonrpc4go/server"
+	"github.com/sunquakes/jsonrpc4go/v2"
+	"github.com/sunquakes/jsonrpc4go/v2/client"
+	"github.com/sunquakes/jsonrpc4go/v2/server"
 )
 
 func TestHttpsCall(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sunquakes/jsonrpc4go/common"
-	"github.com/sunquakes/jsonrpc4go/discovery"
+	"github.com/sunquakes/jsonrpc4go/v2/common"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery"
 	"golang.org/x/time/rate"
 )
 

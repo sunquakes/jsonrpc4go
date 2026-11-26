@@ -1,6 +1,10 @@
 ## [Unreleased]
 
+## [v2.0.0] - 2026-11-26
+
 ### Changed
+- **Breaking**: module path moved to
+  `github.com/sunquakes/jsonrpc4go/v2`; update imports before upgrading.
 - **Breaking**: switched to the JS-style RPC API. Server methods now take
   value arguments and return the result directly (optionally followed by an
   error), e.g. `func (i *IntRpc) Add(a, b int) int`; the old

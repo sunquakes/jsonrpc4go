@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/sunquakes/jsonrpc4go/client"
-	"github.com/sunquakes/jsonrpc4go/discovery"
+	"github.com/sunquakes/jsonrpc4go/v2/client"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery"
 )
 
 /**

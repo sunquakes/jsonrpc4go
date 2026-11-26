@@ -2,7 +2,7 @@ package test
 
 import (
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go/discovery/nacos"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery/nacos"
 	"net/http"
 	"net/http/httptest"
 	"testing"

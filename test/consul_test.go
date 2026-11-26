@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/sunquakes/jsonrpc4go/discovery/consul"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery/consul"
 )
 
 func TestConsulRequestURL(t *testing.T) {

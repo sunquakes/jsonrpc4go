@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/sunquakes/jsonrpc4go/server"
+	"github.com/sunquakes/jsonrpc4go/v2/server"
 )
 
 /**

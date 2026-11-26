@@ -3,7 +3,7 @@ package test
 import (
 	"fmt"
 
-	"github.com/sunquakes/jsonrpc4go/server"
+	"github.com/sunquakes/jsonrpc4go/v2/server"
 )
 
 // serverAddr returns "127.0.0.1:<bound-port>" after the server has started.
