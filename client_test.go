@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/sunquakes/jsonrpc4go/client"
+	"github.com/sunquakes/jsonrpc4go/v2/client"
 )
 
 type fakeResult struct {

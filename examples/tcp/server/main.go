@@ -1,6 +1,6 @@
 package main
 
-import "github.com/sunquakes/jsonrpc4go"
+import "github.com/sunquakes/jsonrpc4go/v2"
 
 type IntRpc struct{}
 

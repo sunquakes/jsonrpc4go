@@ -1,7 +1,7 @@
 package servers
 
 import (
-	"github.com/sunquakes/jsonrpc4go/discovery"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery"
 )
 
 /**

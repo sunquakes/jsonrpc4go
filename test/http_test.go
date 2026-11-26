@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sunquakes/jsonrpc4go"
-	"github.com/sunquakes/jsonrpc4go/client"
-	"github.com/sunquakes/jsonrpc4go/common"
-	"github.com/sunquakes/jsonrpc4go/discovery/consul"
-	"github.com/sunquakes/jsonrpc4go/discovery/nacos"
-	"github.com/sunquakes/jsonrpc4go/server"
+	"github.com/sunquakes/jsonrpc4go/v2"
+	"github.com/sunquakes/jsonrpc4go/v2/client"
+	"github.com/sunquakes/jsonrpc4go/v2/common"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery/consul"
+	"github.com/sunquakes/jsonrpc4go/v2/discovery/nacos"
+	"github.com/sunquakes/jsonrpc4go/v2/server"
 )
 
 const (

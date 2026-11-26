@@ -94,7 +94,7 @@ values, _ := jsonrpc4go.Call[[]int](c, "Count", 2) // [1 2]
 
 ## 🧰 Installing
 ```
-go get -u github.com/sunquakes/jsonrpc4go
+go get -u github.com/sunquakes/jsonrpc4go/v2
 ```
 ## 📖 Getting started
 Server methods take value arguments and return the result directly (optionally followed by an `error`). Arguments travel as a positional JSON array (`"params":[1,6]`).
@@ -104,7 +104,7 @@ Server methods take value arguments and return the result directly (optionally f
 package main
 
 import (
-    "github.com/sunquakes/jsonrpc4go"
+    "github.com/sunquakes/jsonrpc4go/v2"
 )
 
 type IntRpc struct{}
@@ -125,7 +125,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/sunquakes/jsonrpc4go"
+	"github.com/sunquakes/jsonrpc4go/v2"
 )
 
 func main() {

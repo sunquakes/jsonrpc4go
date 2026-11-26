@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/v2/common"
 )
 
 func FuzzParseRequestBody(f *testing.F) {
