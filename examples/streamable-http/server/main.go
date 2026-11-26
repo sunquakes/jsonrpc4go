@@ -4,8 +4,8 @@ import (
 	"flag"
 	"strings"
 
-	"github.com/sunquakes/jsonrpc4go"
-	"github.com/sunquakes/jsonrpc4go/server"
+	"github.com/sunquakes/jsonrpc4go/v2"
+	"github.com/sunquakes/jsonrpc4go/v2/server"
 )
 
 type IntRpc struct{}

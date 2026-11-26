@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/v2/common"
 )
 
 // unitPerson exercises struct parameter schema expansion.

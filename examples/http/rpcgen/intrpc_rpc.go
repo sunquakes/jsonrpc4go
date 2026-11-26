@@ -3,8 +3,8 @@
 package main
 
 import (
-	"github.com/sunquakes/jsonrpc4go"
-	"github.com/sunquakes/jsonrpc4go/client"
+	"github.com/sunquakes/jsonrpc4go/v2"
+	"github.com/sunquakes/jsonrpc4go/v2/client"
 )
 
 // IntRpcApiClient is a typed JSON-RPC client for the "IntRpc" service.

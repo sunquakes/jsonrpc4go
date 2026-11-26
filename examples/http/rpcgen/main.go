@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/sunquakes/jsonrpc4go"
+	"github.com/sunquakes/jsonrpc4go/v2"
 )
 
 func main() {

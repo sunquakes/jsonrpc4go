@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sunquakes/jsonrpc4go"
-	"github.com/sunquakes/jsonrpc4go/client"
-	"github.com/sunquakes/jsonrpc4go/common"
-	"github.com/sunquakes/jsonrpc4go/server"
+	"github.com/sunquakes/jsonrpc4go/v2"
+	"github.com/sunquakes/jsonrpc4go/v2/client"
+	"github.com/sunquakes/jsonrpc4go/v2/common"
+	"github.com/sunquakes/jsonrpc4go/v2/server"
 )
 
 // StreamRpc exercises the streaming result shapes: slice, channel and iterator.

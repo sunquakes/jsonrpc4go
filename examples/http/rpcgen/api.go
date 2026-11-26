@@ -1,6 +1,6 @@
 package main
 
-//go:generate go run github.com/sunquakes/jsonrpc4go/cmd/rpcgen -iface IntRpcApi -service IntRpc -out intrpc_rpc.go
+//go:generate go run github.com/sunquakes/jsonrpc4go/v2/cmd/rpcgen -iface IntRpcApi -service IntRpc -out intrpc_rpc.go
 
 // Result mirrors the value returned by IntRpc.Add2 on the server.
 type Result struct {

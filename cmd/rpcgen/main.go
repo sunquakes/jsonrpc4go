@@ -7,7 +7,7 @@
 //
 // Usage:
 //
-//	//go:generate go run github.com/sunquakes/jsonrpc4go/cmd/rpcgen -iface IntRpcApi -service IntRpc -out intrpc_rpc.go
+//	//go:generate go run github.com/sunquakes/jsonrpc4go/v2/cmd/rpcgen -iface IntRpcApi -service IntRpc -out intrpc_rpc.go
 package main
 
 import (
@@ -263,14 +263,14 @@ func render(pkg, name, service string, model *ifaceModel) ([]byte, error) {
 	switch pkg {
 	case "jsonrpc4go":
 		callPrefix, clientPrefix = "", "client."
-		imports = []string{`"github.com/sunquakes/jsonrpc4go/client"`}
+		imports = []string{`"github.com/sunquakes/jsonrpc4go/v2/client"`}
 	case "client":
 		callPrefix, clientPrefix = "jsonrpc4go.", ""
-		imports = []string{`"github.com/sunquakes/jsonrpc4go"`}
+		imports = []string{`"github.com/sunquakes/jsonrpc4go/v2"`}
 	default:
 		imports = []string{
-			`"github.com/sunquakes/jsonrpc4go"`,
-			`"github.com/sunquakes/jsonrpc4go/client"`,
+			`"github.com/sunquakes/jsonrpc4go/v2"`,
+			`"github.com/sunquakes/jsonrpc4go/v2/client"`,
 		}
 	}
 	var b bytes.Buffer

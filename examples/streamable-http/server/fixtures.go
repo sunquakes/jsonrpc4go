@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sunquakes/jsonrpc4go/server"
+	"github.com/sunquakes/jsonrpc4go/v2/server"
 )
 
 // Fixture content used by the MCP conformance suite. The suite calls these

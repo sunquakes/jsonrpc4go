@@ -215,12 +215,12 @@ res, err := add2(2, 3)  // {5}, <nil>
 
 - 安装
 ```
-go install github.com/sunquakes/jsonrpc4go/cmd/rpcgen@latest
+go install github.com/sunquakes/jsonrpc4go/v2/cmd/rpcgen@latest
 ```
 - 用接口描述服务
 ```go
 // api.go
-//go:generate go run github.com/sunquakes/jsonrpc4go/cmd/rpcgen -iface IntRpcApi -service IntRpc -out intrpc_rpc.go
+//go:generate go run github.com/sunquakes/jsonrpc4go/v2/cmd/rpcgen -iface IntRpcApi -service IntRpc -out intrpc_rpc.go
 
 type IntRpcApi interface {
     Add(a, b int) (int, error)

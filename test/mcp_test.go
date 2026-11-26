@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sunquakes/jsonrpc4go/common"
+	"github.com/sunquakes/jsonrpc4go/v2/common"
 )
 
 // Person is a struct parameter used to check inputSchema field expansion.
