@@ -102,3 +102,16 @@ exact order. Do not stop halfway and do not reorder them:
 
 Never create or push a release tag before the code is merged to `main`, never
 tag from `develop`, and never publish a release manually.
+
+## Branch Cleanup
+
+Delete the temporary branch that was used for a change after its pull request
+is merged, so the repository does not accumulate stale branches.
+
+1. Merge the pull request first; never delete the source branch before the
+   merge completes.
+2. Delete the remote branch with `git push origin --delete <branch>`.
+3. Switch back to `develop`, delete the local branch with
+   `git branch -D <branch>`, and pull the merged changes.
+4. Prefer `gh pr merge <number> --merge --delete-branch` so the remote branch is
+   removed as part of the merge step.
